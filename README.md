@@ -1,58 +1,53 @@
-# ⚓ Batalha Naval High-Tech (Multiplayer Mobile-First)
+# ⚓ Batalha Naval High-Tech (Tactical Cyber Command)
 
-Jogo tático de **Batalha Naval** em tempo real projetado para 2 jogadores disputarem partidas diretamente pelo navegador dos seus smartphones conectados à mesma rede Wi-Fi / Intranet (ou computador).
+Jogo tático de **Batalha Naval** em tempo real projetado para dispositivos móveis e desktops, com arquitetura ultra-rápida em **Node.js + WebSockets**, suporte completo a **PWA Instalável**, **Notificações Web Push (VAPID)**, **Radar de Salas Públicas**, **Sistema de Amigos** e **Ranking Global**.
+
+Disponível em produção em: [**https://batalha.bolsadedados.com.br**](https://batalha.bolsadedados.com.br)
+
+📄 **Especificação Completa:** Consulte o [Plano Completo de Jogo Web Mobile](docs/plano_completo_batalha_naval.md).
 
 ---
 
-## 🚀 Como Executar
+## ⚡ Principais Recursos
+
+1. **Ergonomia Mobile-First & Zero Scroll:** Interface adaptável que cabe 100% no viewport sem rolagem vertical, touch targets $\ge$ 42px e suporte a safe areas (iOS/Android).
+2. **Salas Públicas & Radar em Tempo Real:** Criação de partidas públicas listadas ao vivo no radar do Lobby ou salas privadas via código e QR Code dinâmico.
+3. **Sistema Social de Amigos & Desafio Push:** Código único de comandante (`CMD-XXXX`), amizade mútua anti-spam e envio de convites diretos via Web Push para a tela de bloqueio do celular.
+4. **Regras Oficiais & Tiro Extra:** 5 navios regulamentares (Porta-Aviões, Encouraçado, Cruzador, Submarino e Contratorpedeiro). Acertou o navio? Ganha tiro extra imediatamente!
+5. **Placar de Confronto & Revanche Rápida:** Contagem contínua de vitórias no confronto da sala e botão de revanche rápida sem perder a conexão.
+6. **Quadro de Honra & Ranking Persistente:** Histórico de vitórias, derrotas, taxa de vitória e precisão de disparos persistidos em volume Docker (`data/rankings.json`).
+7. **PWA & Instalação Assistida:** Modal inteligente de instalação e ativação push com intervalo suave de 24h.
+8. **Áudio Procedural & Háptica:** Sintetizador sonoro nativo via Web Audio API (zero arquivos de áudio pesados) e vibrações táteis (`navigator.vibrate`).
+
+---
+
+## 🚀 Como Executar Localmente
 
 ### 1. Iniciar o Servidor
 ```bash
 npm start
 ```
-*(ou `npm run dev` para modo de desenvolvimento com recarregamento automático).*
+*(ou `PORT=3001 npm start`)*
 
-O terminal exibirá imediatamente:
+O terminal exibirá:
 - **Link Local:** `http://localhost:3001`
 - **Link no Celular (mesmo Wi-Fi):** `http://<SEU_IP_LOCAL>:3001` (ex: `http://192.168.1.253:3001`)
 
 ---
 
-## 📱 Como Jogar no Celular
-
-1. **Jogador 1 (Host):**
-   - Acesse o link no computador ou no celular e clique em **"Criar Nova Sala"**.
-   - Será gerado um **Código de Sala** e um **QR Code tático** na tela.
-2. **Jogador 2:**
-   - Aponte a câmera do celular para o QR Code na tela do Jogador 1 (ou acesse o link e digite o código).
-   - O jogo conecta automaticamente!
-3. **Fase de Posicionamento:**
-   - Cada comandante posiciona seus 5 navios no radar 10x10.
-   - Use o botão **"Girar"** para alternar horizontal/vertical ou o botão **"🎲 Aleatório"** para posicionamento instantâneo.
-   - Clique em **"⚓ Confirmar Frota"**.
-4. **Fase de Combate (Turnos):**
-   - **🎯 Radar de Ataque:** Toque na célula inimiga para disparar mísseis.
-   - **Acertou joga de novo!** Se errar (água), a vez passa para o adversário.
-   - **🛡️ Minha Frota:** Aba com alerta sonoro e visual em tempo real mostrando onde os mísseis inimigos atingiram sua frota.
-5. **Vitória & Revanche:**
-   - O primeiro a afundar todos os 5 navios vence.
-   - Clique em **"🔄 Revanche Rápida"** para reiniciar sem sair da sala!
-
----
-
-## 🛠️ Tecnologias Utilizadas
-
-- **Backend:** Node.js, `ws` (WebSockets com validação anti-cheat e sincronização em tempo real).
-- **Auto IP & QR Code:** Leitura automática de interfaces Wi-Fi locais (`os.networkInterfaces`) e geração de QR code via biblioteca `qrcode`.
-- **Frontend:** Vanilla HTML5, CSS3 tático militar (Cyber Radar, tema escuro, responsivo mobile-first).
-- **Áudio Procedural:** Web Audio API sintetizada nativamente (sonar pings, mísseis, água, explosões, alarme de navio afundado).
-- **Vibração Háptica:** `navigator.vibrate` em smartphones para sensação de disparo, acerto e afundamento.
-
----
-
 ## 🧪 Testes Automatizados
 
-Para testar a simulação completa de 2 jogadores via WebSocket:
+Para executar os testes automatizados com simulação completa de 2 jogadores, push notifications, amigos, salas públicas e ranking:
 ```bash
-npm test
+PORT=3001 node server.js &
+node test_game.js
 ```
+
+---
+
+## 🐳 Deploy com Docker
+
+```bash
+docker compose up -d --build
+```
+O diretório `./data` é montado como volume persistente para manter rankings e amigos intactos entre deploys.
