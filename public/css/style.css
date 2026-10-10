@@ -49,6 +49,10 @@ body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   background-image: 
     radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
     linear-gradient(rgba(0, 240, 255, 0.02) 1px, transparent 1px),
@@ -498,10 +502,11 @@ body {
   display: flex;
   align-items: center;
   text-align: center;
-  margin: 20px 0;
+  margin: 16px 0;
   color: var(--text-dim);
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .lobby-divider::before, .lobby-divider::after {
@@ -512,6 +517,72 @@ body {
 
 .lobby-divider span {
   padding: 0 10px;
+}
+
+.join-room-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+
+.join-room-row .input-room-code {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.btn-join-submit {
+  background: linear-gradient(135deg, #00f0ff, #0088ff);
+  color: #040811;
+  font-weight: 800;
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0 18px;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+  white-space: nowrap;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-join-submit:active {
+  transform: scale(0.97);
+}
+
+.lobby-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-chip-action {
+  background: var(--bg-surface);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  padding: 9px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-chip-action:hover, .btn-chip-action:active {
+  background: var(--cyan-dim);
+  border-color: var(--cyan);
 }
 
 /* --- QR Code Waiting Card --- */
@@ -560,29 +631,31 @@ body {
 /* --- SHIP PLACEMENT SCREEN --- */
 .placement-header {
   text-align: center;
-  margin-bottom: 12px;
-}
-
-.placement-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--cyan);
-  text-transform: uppercase;
+  margin-bottom: 6px;
 }
 
 .placement-instructions {
-  font-size: 0.82rem;
-  color: var(--text-dim);
-  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--cyan);
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
 }
 
 .fleet-selector {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding: 6px 2px;
-  margin-bottom: 10px;
+  padding: 4px 2px 8px;
+  margin-bottom: 6px;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.fleet-selector::-webkit-scrollbar {
+  display: none;
 }
 
 .ship-chip {
@@ -594,9 +667,10 @@ body {
   font-size: 0.8rem;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
   transition: all 0.2s;
+  user-select: none;
 }
 
 .ship-chip.selected {
@@ -607,16 +681,44 @@ body {
 }
 
 .ship-chip.placed {
-  opacity: 0.6;
+  opacity: 0.7;
   border-color: var(--green-tactical);
   color: var(--green-tactical);
+  background: rgba(0, 255, 170, 0.1);
+}
+
+.ship-chip-size {
+  opacity: 0.75;
+  font-size: 0.72rem;
 }
 
 .placement-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.placement-quick-btns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 10px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.placement-quick-btns .btn-secondary {
+  margin-top: 0;
+  padding: 8px 6px;
+  font-size: 0.8rem;
+}
+
+.btn-confirm-full {
+  margin-top: 2px;
+  padding: 12px;
+  font-size: 0.95rem;
 }
 
 /* --- TACTICAL GRIDS --- */
@@ -838,33 +940,59 @@ body {
   background: var(--bg-surface);
   border: 1px solid rgba(0, 240, 255, 0.15);
   border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  margin-bottom: 12px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
+  gap: 8px;
+}
+
+.fleet-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fleet-label {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .ships-indicator {
   display: flex;
-  gap: 5px;
+  gap: 4px;
 }
 
 .ship-pip {
-  display: inline-block;
-  padding: 2px 5px;
-  background: rgba(0, 240, 255, 0.15);
-  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 4px;
   color: var(--cyan);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
 }
 
-.ship-pip.destroyed {
-  background: rgba(255, 42, 85, 0.25);
+.ship-pip .pip-size {
+  font-size: 0.65rem;
+  opacity: 0.75;
+}
+
+.ship-pip.sunk, .ship-pip.destroyed {
+  background: rgba(255, 42, 85, 0.2);
+  border-color: rgba(255, 42, 85, 0.4);
   color: var(--red-danger);
   text-decoration: line-through;
-  opacity: 0.6;
+  opacity: 0.45;
+  filter: grayscale(0.8);
 }
 
 /* --- GAME OVER MODAL --- */
@@ -1832,4 +1960,388 @@ body {
   border-radius: 12px;
   margin-top: -4px;
   margin-bottom: 12px;
+}
+
+/* ==========================================================================
+   MOBILE-FIRST UX & ERGONOMICS (Max Width 640px & 360px)
+   Redução de densidade de texto, touch targets >= 44px, layout sem rolagem
+   ========================================================================== */
+
+/* Touch feedback para todos os botões e elementos interativos */
+button, 
+.icon-btn, 
+.btn-primary, 
+.btn-secondary, 
+.btn-join-submit, 
+.btn-chip-action, 
+.ship-chip, 
+.privacy-toggle-card, 
+.btn-join-public-room,
+.tab-btn {
+  touch-action: manipulation;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active, 
+.icon-btn:active, 
+.btn-primary:active, 
+.btn-secondary:active, 
+.btn-join-submit:active, 
+.btn-chip-action:active, 
+.privacy-toggle-card:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}
+
+@media (max-width: 640px) {
+  /* Header Compacto Mobile */
+  .hud-header {
+    padding: 8px 12px;
+  }
+
+  .brand-title {
+    font-size: 0.95rem;
+    letter-spacing: 0.8px;
+  }
+
+  .hud-actions {
+    gap: 6px;
+  }
+
+  /* Oculta os textos dos botões do HUD no mobile, mantendo ícones e acessibilidade */
+  .hud-actions .btn-label {
+    display: none;
+  }
+
+  .icon-btn {
+    min-width: 42px;
+    min-height: 42px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 1.15rem;
+    justify-content: center;
+  }
+
+  /* Turn Banner Tático Compacto */
+  .turn-banner {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .turn-indicator-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .turn-banner-title {
+    font-size: 0.88rem;
+    letter-spacing: 0.5px;
+  }
+
+  .turn-banner-subtitle {
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  /* Conteúdo Principal */
+  .main-content {
+    padding: 8px;
+  }
+
+  /* Lobby Compacto */
+  .lobby-box {
+    padding: 16px 12px;
+    margin: 4px 0;
+    border-radius: var(--radius-md);
+  }
+
+  .lobby-hero-title {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+  }
+
+  .form-label {
+    font-size: 0.74rem;
+    margin-bottom: 4px;
+  }
+
+  .input-tactical {
+    padding: 10px 12px;
+    font-size: 0.92rem;
+  }
+
+  .btn-primary {
+    padding: 12px;
+    font-size: 0.9rem;
+    min-height: 44px;
+  }
+
+  .btn-secondary {
+    padding: 10px;
+    font-size: 0.85rem;
+    min-height: 44px;
+    margin-top: 6px;
+  }
+
+  .privacy-toggle-group {
+    gap: 6px;
+  }
+
+  .privacy-toggle-card {
+    padding: 7px 8px;
+    gap: 6px;
+  }
+
+  .privacy-toggle-card .privacy-icon {
+    font-size: 1.1rem;
+  }
+
+  .privacy-toggle-card .privacy-text strong {
+    font-size: 0.8rem;
+  }
+
+  .privacy-toggle-card .privacy-text small {
+    font-size: 0.64rem;
+  }
+
+  .open-rooms-card {
+    margin: 10px 0 6px;
+    padding: 8px 10px;
+  }
+
+  .open-rooms-list {
+    max-height: 140px;
+  }
+
+  .public-room-item {
+    padding: 6px 8px;
+  }
+
+  .public-room-host {
+    font-size: 0.82rem;
+  }
+
+  .btn-join-public-room {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    min-height: 38px;
+  }
+
+  .lobby-divider {
+    margin: 12px 0;
+    font-size: 0.72rem;
+  }
+
+  .btn-chip-action {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    min-height: 42px;
+  }
+
+  /* Tela de Espera Host */
+  .qr-container {
+    padding: 10px;
+    margin: 10px auto;
+  }
+
+  .qr-image {
+    width: 170px;
+    height: 170px;
+  }
+
+  .room-badge {
+    font-size: 1.25rem;
+    padding: 6px 14px;
+    letter-spacing: 2px;
+  }
+
+  /* Tela de Posicionamento sem rolagem vertical */
+  .placement-header {
+    margin-bottom: 4px;
+  }
+
+  .placement-instructions {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+  }
+
+  .fleet-selector {
+    padding: 2px 2px 6px;
+    margin-bottom: 4px;
+    gap: 5px;
+  }
+
+  .ship-chip {
+    padding: 5px 8px;
+    font-size: 0.75rem;
+    gap: 4px;
+  }
+
+  .tactical-board-card {
+    padding: 6px;
+    max-width: min(94vw, 360px);
+  }
+
+  .grid-container {
+    grid-template-columns: 20px repeat(10, 1fr);
+    grid-template-rows: 20px repeat(10, 1fr);
+    gap: 1.5px;
+  }
+
+  .grid-header-col, .grid-header-row {
+    font-size: 0.65rem;
+  }
+
+  .placement-actions {
+    margin-top: 6px;
+    max-width: min(94vw, 360px);
+    gap: 4px;
+  }
+
+  .placement-quick-btns {
+    gap: 4px;
+  }
+
+  .placement-quick-btns .btn-secondary {
+    padding: 7px 4px;
+    font-size: 0.75rem;
+    min-height: 40px;
+  }
+
+  .btn-confirm-full {
+    padding: 10px;
+    font-size: 0.88rem;
+    min-height: 44px;
+  }
+
+  /* Tela de Combate */
+  .duel-score-bar {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    margin-bottom: 6px;
+  }
+
+  .duel-vs-badge {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+  }
+
+  .mobile-tabs {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .tab-btn {
+    padding: 8px;
+    font-size: 0.8rem;
+    min-height: 40px;
+  }
+
+  .fleet-status-bar {
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+  }
+
+  .ship-pip {
+    padding: 2px 3px;
+    font-size: 0.68rem;
+  }
+
+  .board-label-bar {
+    margin-bottom: 4px;
+  }
+
+  .board-label {
+    font-size: 0.78rem;
+  }
+
+  .radar-status-badge {
+    font-size: 0.68rem;
+    padding: 2px 6px;
+  }
+
+  /* Modais Compactos */
+  .modal-card {
+    padding: 16px 12px;
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .modal-title {
+    font-size: 1.2rem !important;
+  }
+
+  .ranking-table th, .ranking-table td {
+    padding: 6px 3px;
+    font-size: 0.74rem;
+  }
+
+  .ranking-table td:nth-child(2) {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .my-friend-code-card {
+    padding: 8px 10px;
+  }
+
+  .code-val {
+    font-size: 1.2rem;
+  }
+
+  .push-status-card {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .push-status-info strong {
+    font-size: 0.82rem;
+  }
+
+  .push-status-info p {
+    font-size: 0.7rem;
+  }
+
+  .btn-push-action {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+    min-height: 38px;
+  }
+}
+
+/* Telas muito estreitas (iPhone SE 1st gen, 320px-360px) */
+@media (max-width: 360px) {
+  .brand-title {
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+  }
+
+  .icon-btn {
+    min-width: 38px;
+    min-height: 38px;
+    font-size: 1rem;
+    padding: 4px 6px;
+  }
+
+  .grid-container {
+    grid-template-columns: 16px repeat(10, 1fr);
+    grid-template-rows: 16px repeat(10, 1fr);
+    gap: 1px;
+  }
+
+  .grid-header-col, .grid-header-row {
+    font-size: 0.58rem;
+  }
+
+  .tactical-board-card {
+    padding: 4px;
+  }
 }

@@ -26,19 +26,27 @@
       <span class="brand-title">Batalha Naval</span>
     </div>
     <div class="hud-actions">
-      <button id="btn-open-friends" class="icon-btn friends-btn" title="Comandantes Amigos">👥 Amigos</button>
-      <button id="btn-open-ranking" class="icon-btn ranking-btn" title="Classificação dos Comandantes">🏆 Ranking</button>
-      <button id="btn-install-app" class="icon-btn install-btn" style="display: none;" title="Instalar no Dispositivo">📲 Instalar</button>
-      <button id="btn-mute" class="icon-btn" title="Alternar Som">🔊 Som</button>
+      <button id="btn-open-friends" class="icon-btn friends-btn" title="Amigos" aria-label="Comandantes Amigos">
+        <span class="btn-icon">👥</span><span class="btn-label">Amigos</span>
+      </button>
+      <button id="btn-open-ranking" class="icon-btn ranking-btn" title="Ranking" aria-label="Ranking Geral">
+        <span class="btn-icon">🏆</span><span class="btn-label">Ranking</span>
+      </button>
+      <button id="btn-install-app" class="icon-btn install-btn" style="display: none;" title="Instalar App" aria-label="Instalar no Dispositivo">
+        <span class="btn-icon">📲</span><span class="btn-label">Instalar</span>
+      </button>
+      <button id="btn-mute" class="icon-btn" title="Alternar Som" aria-label="Alternar Som">
+        <span class="btn-icon">🔊</span><span class="btn-label">Som</span>
+      </button>
     </div>
   </header>
 
-  <!-- Turn & Battle Status Banner (HUD Fixo e Destacado) -->
-  <div id="hud-turn-banner" class="turn-banner">
+  <!-- Turn & Battle Status Banner (HUD Ativo na Batalha) -->
+  <div id="hud-turn-banner" class="turn-banner" style="display: none;">
     <div class="turn-indicator-dot"></div>
     <div class="turn-banner-content">
-      <div id="turn-banner-main" class="turn-banner-title">⚓ Central de Comando Pronta</div>
-      <div id="turn-banner-sub" class="turn-banner-subtitle">Aguardando início das operações táticas</div>
+      <div id="turn-banner-main" class="turn-banner-title">⚓ Central Pronta</div>
+      <div id="turn-banner-sub" class="turn-banner-subtitle">Aguardando batalha</div>
     </div>
   </div>
 
@@ -46,8 +54,8 @@
   <div id="turn-splash-overlay" class="turn-splash-overlay">
     <div id="turn-splash-card" class="turn-splash-card">
       <div id="turn-splash-icon" class="turn-splash-icon">⚡</div>
-      <div id="turn-splash-title" class="turn-splash-title">SUA VEZ DE ATACAR!</div>
-      <div id="turn-splash-desc" class="turn-splash-desc">Toque nas coordenadas do radar inimigo</div>
+      <div id="turn-splash-title" class="turn-splash-title">SUA VEZ!</div>
+      <div id="turn-splash-desc" class="turn-splash-desc">Toque no radar inimigo</div>
     </div>
   </div>
 
@@ -58,35 +66,34 @@
     <section id="screen-lobby" class="screen active">
       <div class="lobby-box">
         <h1 class="lobby-hero-title">Radar Tático</h1>
-        <p class="lobby-subtitle">Batalha Naval Multiplayer para celular na mesma rede</p>
 
         <div class="form-group">
-          <label class="form-label" for="input-player-name">Identificação do Comandante</label>
+          <label class="form-label" for="input-player-name">Comandante</label>
           <input type="text" id="input-player-name" class="input-tactical" placeholder="Ex: Capitão Jack" maxlength="15" value="Comandante">
         </div>
 
         <div class="privacy-selector-wrapper">
-          <label class="form-label">Tipo de Partida</label>
+          <label class="form-label">Partida</label>
           <div class="privacy-toggle-group">
             <div class="privacy-toggle-card active" id="btn-privacy-public">
               <span class="privacy-icon">🌐</span>
               <div class="privacy-text">
                 <strong>Pública</strong>
-                <small>Visível no radar para qualquer jogador</small>
+                <small>Aberta no radar</small>
               </div>
             </div>
             <div class="privacy-toggle-card" id="btn-privacy-private">
               <span class="privacy-icon">🔒</span>
               <div class="privacy-text">
                 <strong>Privada</strong>
-                <small>Apenas com código direto ou link</small>
+                <small>Com código direto</small>
               </div>
             </div>
           </div>
         </div>
 
         <button id="btn-create-room" class="btn-primary">
-          <span>📡</span> Criar Nova Sala
+          <span>📡</span> Criar Sala
         </button>
 
         <!-- LISTA DE BATALHAS PÚBLICAS EM ABERTO -->
@@ -94,34 +101,32 @@
           <div class="open-rooms-header">
             <div class="open-rooms-title-box">
               <span class="radar-live-blip"></span>
-              <strong>Batalhas em Aberto</strong>
+              <strong>Salas Abertas</strong>
               <span id="badge-public-rooms-count" class="badge-rooms-count">0</span>
             </div>
-            <button id="btn-refresh-rooms" class="btn-refresh-rooms" title="Atualizar Radar">🔄</button>
+            <button id="btn-refresh-rooms" class="btn-refresh-rooms" title="Atualizar Radar" aria-label="Atualizar">🔄</button>
           </div>
           <div id="public-rooms-container" class="open-rooms-list">
-            <div class="rooms-loading-hint">Buscando partidas no radar tático...</div>
+            <div class="rooms-loading-hint">Buscando salas...</div>
           </div>
         </div>
 
         <div class="lobby-divider">
-          <span>OU ENTRE COM CÓDIGO DIRETO</span>
+          <span>OU ENTRE COM CÓDIGO</span>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="input-room-code">Código da Sala</label>
-          <input type="text" id="input-room-code" class="input-tactical" placeholder="Ex: NAV4" maxlength="6" style="text-transform: uppercase; letter-spacing: 2px;">
-        </div>
-
-        <button id="btn-join-room" class="btn-secondary">
-          <span>🎯</span> Entrar na Partida
-        </button>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button id="btn-lobby-friends" class="btn-secondary" style="border-color: rgba(0, 240, 255, 0.4); color: var(--cyan);">
-            <span>👥</span> Amigos & Push
+        <div class="join-room-row">
+          <input type="text" id="input-room-code" class="input-tactical input-room-code" placeholder="CÓDIGO (EX: NAV4)" maxlength="6" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+          <button id="btn-join-room" class="btn-join-submit">
+            Entrar ⚡
           </button>
-          <button id="btn-lobby-ranking" class="btn-secondary" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
+        </div>
+
+        <div class="lobby-quick-actions">
+          <button id="btn-lobby-friends" class="btn-chip-action" title="Amigos e Desafios Push">
+            <span>👥</span> Amigos
+          </button>
+          <button id="btn-lobby-ranking" class="btn-chip-action" title="Quadro de Honra">
             <span>🏆</span> Ranking
           </button>
         </div>
@@ -131,8 +136,8 @@
           <div class="install-info">
             <span class="install-icon">📲</span>
             <div class="install-text">
-              <strong>Instalar no Celular</strong>
-              <p>Jogue em tela cheia com resposta tátil nativa</p>
+              <strong>Instalar App</strong>
+              <p>Tela cheia e vibração tátil</p>
             </div>
           </div>
           <button id="btn-lobby-install" class="btn-install-action">Instalar</button>
@@ -143,23 +148,22 @@
     <!-- SCREEN 2: WAITING HOST (QR CODE) -->
     <section id="screen-waiting-host" class="screen">
       <div class="lobby-box">
-        <h2 class="lobby-hero-title">Sala Criada</h2>
-        <p class="lobby-subtitle">Peça para o 2º jogador apontar a câmera do celular para o QR Code abaixo:</p>
+        <h2 class="lobby-hero-title">Aguardando Oponente</h2>
+        <p class="lobby-subtitle">Aponte a câmera para o QR Code ou passe o código:</p>
 
         <div class="room-badge" id="display-room-code">----</div>
-        <div id="waiting-privacy-badge" class="waiting-privacy-tag">🌐 Sala Pública (Aguardando no Radar)</div>
+        <div id="waiting-privacy-badge" class="waiting-privacy-tag">🌐 Sala Pública</div>
 
         <div class="qr-container">
           <img id="qr-img" class="qr-image" src="" alt="QR Code da Sala">
         </div>
 
         <div class="network-hint">
-          <strong>Endereço de Conexão na Rede:</strong><br>
           <span id="network-ip-display" style="color: var(--cyan); word-break: break-all;">Carregando...</span>
         </div>
 
         <button id="btn-copy-link" class="btn-secondary">
-          <span>📋</span> Copiar Link de Acesso
+          <span>📋</span> Copiar Link
         </button>
       </div>
     </section>
@@ -167,9 +171,8 @@
     <!-- SCREEN 3: SHIP PLACEMENT -->
     <section id="screen-placement" class="screen">
       <div class="placement-header">
-        <h2 class="placement-title">Posicione sua Frota</h2>
         <p class="placement-instructions" id="placement-status-text">
-          Selecione o navio e toque no radar para posicioná-lo.
+          Toque no radar para posicionar sua frota
         </p>
       </div>
 
@@ -179,20 +182,18 @@
       <!-- Placement Grid -->
       <div class="grid-wrapper">
         <div class="tactical-board-card">
-          <div class="board-label-bar">
-            <span class="board-label">🗺️ Grade de Posicionamento</span>
-            <span class="board-subtext">10x10</span>
-          </div>
           <div id="placement-grid" class="grid-container"></div>
         </div>
       </div>
 
       <!-- Placement Controls -->
       <div class="placement-actions">
-        <button id="btn-rotate-ship" class="btn-secondary">🔄 Girar (Horizontal)</button>
-        <button id="btn-random-fleet" class="btn-secondary">🎲 Aleatório</button>
-        <button id="btn-clear-fleet" class="btn-secondary">🗑️ Limpar</button>
-        <button id="btn-confirm-fleet" class="btn-primary" disabled>⚓ Confirmar Frota (0/5)</button>
+        <div class="placement-quick-btns">
+          <button id="btn-rotate-ship" class="btn-secondary" title="Girar Orientação">🔄 Girar (H)</button>
+          <button id="btn-random-fleet" class="btn-secondary" title="Posicionamento Aleatório">🎲 Auto</button>
+          <button id="btn-clear-fleet" class="btn-secondary" title="Limpar Grade">🗑️ Limpar</button>
+        </div>
+        <button id="btn-confirm-fleet" class="btn-primary btn-confirm-full" disabled>⚓ Pronto (0/5)</button>
       </div>
     </section>
 
@@ -205,33 +206,33 @@
           <span id="duel-my-name" class="duel-p-name">Você</span>
           <span id="duel-my-score" class="duel-p-score">0</span>
         </div>
-        <div class="duel-vs-badge">⚔️ CONFRONTO</div>
+        <div class="duel-vs-badge">⚔️ VS</div>
         <div class="duel-player-tag opp">
           <span id="duel-opp-score" class="duel-p-score">0</span>
           <span id="duel-opp-name" class="duel-p-name">Inimigo</span>
-          <button id="btn-battle-add-friend" class="btn-micro-friend" title="Adicionar oponente aos amigos" style="display: none;">⭐ +Amigo</button>
+          <button id="btn-battle-add-friend" class="btn-micro-friend" title="Adicionar aos amigos" style="display: none;">⭐ +Amigo</button>
         </div>
       </div>
       
       <!-- Mobile Switch Tabs -->
       <div class="mobile-tabs">
         <button id="tab-attack" class="tab-btn active">
-          🎯 Radar de Ataque
+          🎯 Ataque
         </button>
         <button id="tab-defense" class="tab-btn">
-          🛡️ Minha Frota
+          🛡️ Defesa
           <span id="badge-defense-alert" class="tab-badge">!</span>
         </button>
       </div>
 
       <!-- Fleet Silhouettes Tracker -->
       <div class="fleet-status-bar">
-        <div>
-          <span style="color: var(--text-dim);">Frota Inimiga:</span>
+        <div class="fleet-col">
+          <span class="fleet-label">Inimigo:</span>
           <div id="enemy-ships-pips" class="ships-indicator"></div>
         </div>
-        <div>
-          <span style="color: var(--text-dim);">Nossa Frota:</span>
+        <div class="fleet-col">
+          <span class="fleet-label">Você:</span>
           <div id="my-ships-pips" class="ships-indicator"></div>
         </div>
       </div>
@@ -242,7 +243,7 @@
         <!-- ATTACK RADAR -->
         <div id="card-attack-radar" class="tactical-board-card radar-sweep">
           <div class="board-label-bar">
-            <span class="board-label">🎯 Radar de Ataque</span>
+            <span class="board-label">🎯 Radar Inimigo</span>
             <span id="radar-status-badge" class="radar-status-badge badge-active">🟢 SUA VEZ</span>
           </div>
           <div id="attack-grid" class="grid-container"></div>
@@ -251,8 +252,7 @@
         <!-- DEFENSE RADAR -->
         <div id="card-defense-fleet" class="tactical-board-card" style="display: none;">
           <div class="board-label-bar">
-            <span class="board-label">🛡️ Minha Frota (Defesa)</span>
-            <span class="board-subtext">Disparos inimigos recebidos</span>
+            <span class="board-label">🛡️ Sua Frota</span>
           </div>
           <div id="defense-grid" class="grid-container"></div>
         </div>
@@ -307,13 +307,12 @@
   <!-- MODAL: Comandantes Amigos & Notificações Push -->
   <div id="modal-friends" class="modal-overlay">
     <div class="modal-card modal-friends-card">
-      <h2 class="modal-title" style="color: var(--cyan); font-size: 1.35rem;">👥 Comandantes Amigos</h2>
-      <p class="lobby-subtitle" style="margin-bottom: 12px;">Desafie seus amigos com notificação push direto no celular</p>
+      <h2 class="modal-title" style="color: var(--cyan); font-size: 1.3rem;">👥 Amigos & Desafios</h2>
 
       <!-- Player Friend Code Box -->
       <div class="my-friend-code-card">
         <div class="code-info">
-          <span class="code-label">SEU CÓDIGO DE COMANDANTE</span>
+          <span class="code-label">SEU CÓDIGO</span>
           <div class="code-val-row">
             <strong id="my-display-friend-code" class="code-val">CMD-....</strong>
           </div>
@@ -329,8 +328,8 @@
         <div class="push-status-info">
           <span id="push-status-icon" class="push-status-icon">🔔</span>
           <div>
-            <strong id="push-status-title">Notificações Push</strong>
-            <p id="push-status-desc">Ative para receber chamados de batalha mesmo fora do jogo.</p>
+            <strong id="push-status-title">Alertas Push</strong>
+            <p id="push-status-desc">Receba convites de amigos em segundo plano.</p>
           </div>
         </div>
         <button id="btn-enable-push" class="btn-push-action">Ativar</button>
@@ -338,18 +337,18 @@
 
       <!-- Add Friend by Code Form -->
       <div class="add-friend-form">
-        <input type="text" id="input-add-friend-code" class="input-tactical" placeholder="Código (Ex: CMD-8A2F)" maxlength="10" style="text-transform: uppercase; letter-spacing: 1px;">
+        <input type="text" id="input-add-friend-code" class="input-tactical" placeholder="CÓDIGO (CMD-...)" maxlength="10" autocomplete="off" autocapitalize="characters">
         <button id="btn-submit-add-friend" class="btn-primary" style="white-space: nowrap; padding: 10px 14px;">➕ Adicionar</button>
       </div>
 
       <!-- Friends List -->
       <div class="friends-list-header">
-        <span class="friends-list-title">Seus Amigos</span>
+        <span class="friends-list-title">Lista de Amigos</span>
         <span id="friends-count-badge" class="friends-count-badge">0</span>
       </div>
       <div class="friends-list-wrapper">
         <div id="friends-list-container" class="friends-list">
-          <div class="friends-empty-hint">Nenhum amigo adicionado ainda. Compartilhe seu código ou adicione adversários após as batalhas!</div>
+          <div class="friends-empty-hint">Nenhum amigo adicionado ainda. Compartilhe seu código acima!</div>
         </div>
       </div>
 
@@ -362,25 +361,24 @@
   <!-- MODAL: Ranking Geral de Comandantes -->
   <div id="modal-ranking" class="modal-overlay">
     <div class="modal-card modal-ranking-card">
-      <h2 class="modal-title" style="color: #ffd700; font-size: 1.4rem;">🏆 Quadro de Honra</h2>
-      <p class="lobby-subtitle" style="margin-bottom: 14px;">Ranking Geral de Vitórias dos Comandantes</p>
+      <h2 class="modal-title" style="color: #ffd700; font-size: 1.35rem;">🏆 Quadro de Honra</h2>
 
       <div class="ranking-table-wrapper">
         <table class="ranking-table">
           <thead>
             <tr>
-              <th style="width: 38px;">#</th>
+              <th style="width: 32px;">#</th>
               <th>Comandante</th>
-              <th>Vitórias</th>
-              <th>Derrotas</th>
-              <th>Aprov.</th>
+              <th>Vit.</th>
+              <th>Der.</th>
+              <th>%</th>
               <th>Mira</th>
             </tr>
           </thead>
           <tbody id="ranking-table-body">
             <tr>
               <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 18px;">
-                Carregando dados dos comandantes...
+                Carregando dados...
               </td>
             </tr>
           </tbody>

@@ -78,12 +78,17 @@
     if (screens[screenName]) {
       screens[screenName].classList.add('active');
     }
+    if (hudTurnBanner) {
+      hudTurnBanner.style.display = (screenName === 'battle') ? 'flex' : 'none';
+    }
   }
 
   // --- Sound & Audio Control ---
   function updateMuteButton() {
     const muted = window.tacticalAudio.isMuted();
-    btnMute.innerHTML = muted ? '🔇 Mudo' : '🔊 Som';
+    btnMute.innerHTML = muted 
+      ? '<span class="btn-icon">🔇</span><span class="btn-label">Mudo</span>' 
+      : '<span class="btn-icon">🔊</span><span class="btn-label">Som</span>';
   }
 
   btnMute.addEventListener('click', () => {
@@ -363,9 +368,9 @@
     if (list.length === 0) {
       publicRoomsContainer.innerHTML = `
         <div class="empty-rooms-msg">
-          <span style="font-size: 1.6rem; display: block; margin-bottom: 6px;">📡</span>
-          Nenhuma batalha pública aberta no momento.<br>
-          <small style="color: var(--text-dim);">Crie uma sala pública acima ou convide um amigo!</small>
+          <span style="font-size: 1.3rem; display: block; margin-bottom: 2px;">📡</span>
+          Nenhuma sala aberta no momento.<br>
+          <small style="color: var(--text-dim);">Crie uma sala acima ou desafie um amigo.</small>
         </div>
       `;
       return;
@@ -488,8 +493,8 @@
     state.placement.orientation = 'H';
 
     btnConfirmFleet.disabled = true;
-    btnConfirmFleet.textContent = '⚓ Confirmar Frota (0/5)';
-    document.getElementById('placement-status-text').textContent = 'Toque nas coordenadas para posicionar cada embarcação.';
+    btnConfirmFleet.textContent = '⚓ Pronto (0/5)';
+    document.getElementById('placement-status-text').textContent = 'Toque no radar para posicionar cada navio.';
 
     renderPlacementFleetChips();
     renderGrid(placementGridEl, false, onPlacementCellClick, onPlacementCellHover);
@@ -506,7 +511,7 @@
       if (isPlaced) chip.classList.add('placed');
       if (isSelected) chip.classList.add('selected');
 
-      chip.innerHTML = `${spec.icon} <strong>${spec.name}</strong> (${spec.size})`;
+      chip.innerHTML = `${spec.icon} <span class="ship-chip-name">${spec.name}</span> <span class="ship-chip-size">${spec.size}</span>${isPlaced ? ' ✓' : ''}`;
       chip.addEventListener('click', () => {
         window.tacticalAudio.click();
         state.placement.selectedShipId = spec.id;
@@ -520,7 +525,7 @@
   btnRotate.addEventListener('click', () => {
     window.tacticalAudio.click();
     state.placement.orientation = state.placement.orientation === 'H' ? 'V' : 'H';
-    btnRotate.innerHTML = `🔄 Girar (${state.placement.orientation === 'H' ? 'Horizontal' : 'Vertical'})`;
+    btnRotate.innerHTML = `🔄 Girar (${state.placement.orientation})`;
   });
 
   btnClearPlacement.addEventListener('click', () => {
@@ -529,7 +534,7 @@
     renderPlacementFleetChips();
     updatePlacementGridDisplay();
     btnConfirmFleet.disabled = true;
-    btnConfirmFleet.textContent = '⚓ Confirmar Frota (0/5)';
+    btnConfirmFleet.textContent = '⚓ Pronto (0/5)';
   });
 
   btnRandomPlacement.addEventListener('click', () => {
@@ -644,10 +649,10 @@
 
   function checkAllShipsPlaced() {
     const count = state.placement.ships.length;
-    btnConfirmFleet.textContent = `⚓ Confirmar Frota (${count}/5)`;
+    btnConfirmFleet.textContent = count === 5 ? '⚓ Confirmar Frota!' : `⚓ Pronto (${count}/5)`;
     btnConfirmFleet.disabled = count !== 5;
     if (count === 5) {
-      showToast('Frota completa! Clique em Confirmar Frota.');
+      showToast('Frota completa! Confirme para iniciar.');
     }
   }
 
@@ -742,22 +747,22 @@
     if (isMyTurn) {
       if (isExtraTurn) {
         hudTurnBanner.className = 'turn-banner extra-turn';
-        if (titleEl) titleEl.textContent = '💥 TIRO EXTRA CONCEDIDO!';
-        if (subEl) subEl.textContent = 'Você acertou o navio! Toque no radar para atirar novamente.';
-        showTurnSplash('extra', 'TIRO EXTRA!', 'Alvo atingido! Você ganhou mais um disparo.', '💥');
+        if (titleEl) titleEl.textContent = '💥 TIRO EXTRA!';
+        if (subEl) subEl.textContent = 'Alvo atingido! Dispare novamente.';
+        showTurnSplash('extra', 'TIRO EXTRA!', 'Alvo atingido! Dispare novamente.', '💥');
         window.tacticalAudio.extraShotSound();
         window.tacticalHaptics.extraTurn();
       } else {
         hudTurnBanner.className = 'turn-banner your-turn';
-        if (titleEl) titleEl.textContent = '🟢 SUA VEZ DE ATACAR!';
-        if (subEl) subEl.textContent = 'Disparo autorizado — toque nas coordenadas do radar inimigo.';
-        showTurnSplash('', 'SUA VEZ DE ATACAR!', 'Disparo de míssil autorizado! Escolha seu alvo no radar.', '⚡');
+        if (titleEl) titleEl.textContent = '🟢 SUA VEZ!';
+        if (subEl) subEl.textContent = 'Toque no radar para disparar.';
+        showTurnSplash('', 'SUA VEZ!', 'Disparo autorizado! Toque no radar.', '⚡');
         window.tacticalAudio.turnAlertSound();
         window.tacticalHaptics.yourTurn();
       }
 
       if (radarBadge) {
-        radarBadge.textContent = '🟢 DISPARO AUTORIZADO';
+        radarBadge.textContent = '🟢 AUTORIZADO';
         radarBadge.className = 'radar-status-badge badge-active';
       }
       if (attackRadarCard) {
@@ -768,11 +773,11 @@
       switchBattleTab('attack');
     } else {
       hudTurnBanner.className = 'turn-banner opponent-turn';
-      if (titleEl) titleEl.textContent = `⏳ TURNO DE ${activePlayerName.toUpperCase()}`;
-      if (subEl) subEl.textContent = 'Aguarde o disparo do adversário...';
+      if (titleEl) titleEl.textContent = `⏳ TURNO: ${activePlayerName.toUpperCase()}`;
+      if (subEl) subEl.textContent = 'Aguarde o disparo adversário...';
 
       if (radarBadge) {
-        radarBadge.textContent = '🔒 RADAR TRAVADO';
+        radarBadge.textContent = '🔒 TRAVADO';
         radarBadge.className = 'radar-status-badge badge-locked';
       }
       if (attackRadarCard) {
@@ -780,7 +785,7 @@
         attackRadarCard.classList.add('radar-locked');
       }
 
-      showTurnSplash('opponent', `TURNO DO INIMIGO`, `Aguardando coordenadas de disparo de ${activePlayerName}...`, '⏳');
+      showTurnSplash('opponent', 'TURNO DO INIMIGO', `Aguardando ${activePlayerName}...`, '⏳');
     }
   }
 
@@ -803,12 +808,12 @@
   function onAttackCellClick(row, col) {
     if (!state.battle.isMyTurn) {
       window.tacticalHaptics.miss();
-      showToast('🔒 RADAR TRAVADO: Aguarde a sua vez de jogar!', 2500);
+      showToast('🔒 Aguarde sua vez de atirar!', 2000);
       return;
     }
 
     if (state.battle.attackGrid[row][col] !== null) {
-      showToast('Esta coordenada já foi bombardeada!');
+      showToast('Coordenada já bombardeada!');
       return;
     }
 
@@ -835,18 +840,19 @@
         if (sunkShip) {
           window.tacticalAudio.sunkAlarm();
           window.tacticalHaptics.sunk();
-          showToast(`☠️ AFUNDOU! ${sunkShip.name} do inimigo destruído!`, 4000);
+          showToast(`☠️ AFUNDOU! ${sunkShip.name} destruído!`, 3500);
           state.battle.enemySunkCount++;
           markShipSunk(attackGridEl, sunkShip.coords);
-          updateFleetPips();
+          const enemyPip = document.getElementById(`enemy-pip-${sunkShip.id}`);
+          if (enemyPip) enemyPip.classList.add('sunk');
         } else {
-          showToast('💥 TIRO CERTEIRO! Fogo em navio inimigo!', 2500);
+          showToast('💥 ACERTOU! Fogo no alvo!', 2000);
         }
       } else {
         window.tacticalAudio.waterSplash();
         window.tacticalHaptics.miss();
         cell.className = 'grid-cell miss';
-        showToast('🌊 ÁGUA! O disparo errou o alvo.', 2000);
+        showToast('🌊 ÁGUA!', 1500);
       }
     } else {
       // Atualiza a Frota de Defesa
@@ -858,7 +864,6 @@
         window.tacticalHaptics.hit();
         cell.className = 'grid-cell hit';
 
-        // Alerta na aba de defesa se o jogador estiver vendo o ataque
         if (state.battle.activeTab === 'attack') {
           badgeDefense.classList.add('active');
         }
@@ -866,12 +871,13 @@
         if (sunkShip) {
           window.tacticalAudio.sunkAlarm();
           window.tacticalHaptics.sunk();
-          showToast(`🚨 ALERTA: Nosso ${sunkShip.name} foi afundado!`, 4000);
+          showToast(`🚨 Nosso ${sunkShip.name} afundou!`, 3500);
           state.battle.mySunkCount++;
           markShipSunk(defenseGridEl, sunkShip.coords);
-          updateFleetPips();
+          const myPip = document.getElementById(`my-pip-${sunkShip.id}`);
+          if (myPip) myPip.classList.add('sunk');
         } else {
-          showToast('⚠️ IMPACTO! Nossa frota sofreu dano!', 2500);
+          showToast('⚠️ IMPACTO na nossa frota!', 2000);
         }
       } else {
         window.tacticalAudio.waterSplash();
@@ -898,23 +904,25 @@
     enemyContainer.innerHTML = '';
     myContainer.innerHTML = '';
 
-    state.shipSpecs.forEach((spec, i) => {
+    state.shipSpecs.forEach(spec => {
       const enemyPip = document.createElement('span');
       enemyPip.className = 'ship-pip';
       enemyPip.id = `enemy-pip-${spec.id}`;
-      enemyPip.textContent = `${spec.icon} ${spec.name.slice(0, 4)}.`;
+      enemyPip.title = `${spec.name} (${spec.size})`;
+      enemyPip.innerHTML = `<span class="pip-icon">${spec.icon}</span><span class="pip-size">${spec.size}</span>`;
       enemyContainer.appendChild(enemyPip);
 
       const myPip = document.createElement('span');
       myPip.className = 'ship-pip';
       myPip.id = `my-pip-${spec.id}`;
-      myPip.textContent = `${spec.icon} ${spec.name.slice(0, 4)}.`;
+      myPip.title = `${spec.name} (${spec.size})`;
+      myPip.innerHTML = `<span class="pip-icon">${spec.icon}</span><span class="pip-size">${spec.size}</span>`;
       myContainer.appendChild(myPip);
     });
   }
 
   function updateFleetPips() {
-    // Pips are updated when ships sink
+    // Sunk status is updated in handleShotResult
   }
 
   function handleGameOver(msg) {
