@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Batalha Naval High-Tech | Tactical Mobile Radar</title>
+  <meta name="theme-color" content="#040811">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓</text></svg>">
+</head>
+<body>
+
+  <!-- Top Tactical HUD -->
+  <header class="hud-header">
+    <div class="brand">
+      <span class="brand-icon">⚓</span>
+      <span class="brand-title">Batalha Naval</span>
+    </div>
+    <div class="hud-actions">
+      <button id="btn-mute" class="icon-btn" title="Alternar Som">🔊 Som</button>
+    </div>
+  </header>
+
+  <!-- Turn & Battle Status Banner -->
+  <div id="hud-turn-banner" class="turn-banner">
+    ⚓ Central de Comando Pronta
+  </div>
+
+  <!-- Main View Area -->
+  <main class="main-content">
+
+    <!-- SCREEN 1: LOBBY -->
+    <section id="screen-lobby" class="screen active">
+      <div class="lobby-box">
+        <h1 class="lobby-hero-title">Radar Tático</h1>
+        <p class="lobby-subtitle">Batalha Naval Multiplayer para celular na mesma rede</p>
+
+        <div class="form-group">
+          <label class="form-label" for="input-player-name">Identificação do Comandante</label>
+          <input type="text" id="input-player-name" class="input-tactical" placeholder="Ex: Capitão Jack" maxlength="15" value="Comandante">
+        </div>
+
+        <button id="btn-create-room" class="btn-primary">
+          <span>📡</span> Criar Nova Sala
+        </button>
+
+        <div class="lobby-divider">
+          <span>OU ENTRE COM CÓDIGO</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="input-room-code">Código da Sala</label>
+          <input type="text" id="input-room-code" class="input-tactical" placeholder="Ex: NAV4" maxlength="6" style="text-transform: uppercase; letter-spacing: 2px;">
+        </div>
+
+        <button id="btn-join-room" class="btn-secondary">
+          <span>🎯</span> Entrar na Partida
+        </button>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: WAITING HOST (QR CODE) -->
+    <section id="screen-waiting-host" class="screen">
+      <div class="lobby-box">
+        <h2 class="lobby-hero-title">Sala Criada</h2>
+        <p class="lobby-subtitle">Peça para o 2º jogador apontar a câmera do celular para o QR Code abaixo:</p>
+
+        <div class="room-badge" id="display-room-code">----</div>
+
+        <div class="qr-container">
+          <img id="qr-img" class="qr-image" src="" alt="QR Code da Sala">
+        </div>
+
+        <div class="network-hint">
+          <strong>Endereço de Conexão na Rede:</strong><br>
+          <span id="network-ip-display" style="color: var(--cyan); word-break: break-all;">Carregando...</span>
+        </div>
+
+        <button id="btn-copy-link" class="btn-secondary">
+          <span>📋</span> Copiar Link de Acesso
+        </button>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: SHIP PLACEMENT -->
+    <section id="screen-placement" class="screen">
+      <div class="placement-header">
+        <h2 class="placement-title">Posicione sua Frota</h2>
+        <p class="placement-instructions" id="placement-status-text">
+          Selecione o navio e toque no radar para posicioná-lo.
+        </p>
+      </div>
+
+      <!-- Selector of ships -->
+      <div id="fleet-selector" class="fleet-selector"></div>
+
+      <!-- Placement Grid -->
+      <div class="grid-wrapper">
+        <div class="tactical-board-card">
+          <div class="board-label-bar">
+            <span class="board-label">🗺️ Grade de Posicionamento</span>
+            <span class="board-subtext">10x10</span>
+          </div>
+          <div id="placement-grid" class="grid-container"></div>
+        </div>
+      </div>
+
+      <!-- Placement Controls -->
+      <div class="placement-actions">
+        <button id="btn-rotate-ship" class="btn-secondary">🔄 Girar (Horizontal)</button>
+        <button id="btn-random-fleet" class="btn-secondary">🎲 Aleatório</button>
+        <button id="btn-clear-fleet" class="btn-secondary">🗑️ Limpar</button>
+        <button id="btn-confirm-fleet" class="btn-primary" disabled>⚓ Confirmar Frota (0/5)</button>
+      </div>
+    </section>
+
+    <!-- SCREEN 4: BATTLE COMBAT -->
+    <section id="screen-battle" class="screen">
+      
+      <!-- Mobile Switch Tabs -->
+      <div class="mobile-tabs">
+        <button id="tab-attack" class="tab-btn active">
+          🎯 Radar de Ataque
+        </button>
+        <button id="tab-defense" class="tab-btn">
+          🛡️ Minha Frota
+          <span id="badge-defense-alert" class="tab-badge">!</span>
+        </button>
+      </div>
+
+      <!-- Fleet Silhouettes Tracker -->
+      <div class="fleet-status-bar">
+        <div>
+          <span style="color: var(--text-dim);">Frota Inimiga:</span>
+          <div id="enemy-ships-pips" class="ships-indicator"></div>
+        </div>
+        <div>
+          <span style="color: var(--text-dim);">Nossa Frota:</span>
+          <div id="my-ships-pips" class="ships-indicator"></div>
+        </div>
+      </div>
+
+      <!-- Battle Boards (Side by Side on Desktop, Tabbed on Mobile) -->
+      <div class="battle-boards-desktop">
+        
+        <!-- ATTACK RADAR -->
+        <div id="card-attack-radar" class="tactical-board-card radar-sweep">
+          <div class="board-label-bar">
+            <span class="board-label">🎯 Radar de Ataque (Inimigo)</span>
+            <span class="board-subtext">Toque para atirar míssil</span>
+          </div>
+          <div id="attack-grid" class="grid-container"></div>
+        </div>
+
+        <!-- DEFENSE RADAR -->
+        <div id="card-defense-fleet" class="tactical-board-card" style="display: none;">
+          <div class="board-label-bar">
+            <span class="board-label">🛡️ Minha Frota (Defesa)</span>
+            <span class="board-subtext">Disparos inimigos recebidos</span>
+          </div>
+          <div id="defense-grid" class="grid-container"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- GAME OVER MODAL -->
+  <div id="modal-game-over" class="modal-overlay">
+    <div class="modal-card">
+      <h2 id="modal-title" class="modal-title">Fim de Jogo</h2>
+      <p id="modal-subtitle" class="lobby-subtitle">Resultado da Batalha Naval</p>
+
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div id="stat-shots" class="stat-val">0</div>
+          <div class="stat-lbl">Tiros Disparados</div>
+        </div>
+        <div class="stat-item">
+          <div id="stat-hits" class="stat-val">0</div>
+          <div class="stat-lbl">Acertos Certeiros</div>
+        </div>
+        <div class="stat-item" style="grid-column: span 2;">
+          <div id="stat-accuracy" class="stat-val">0%</div>
+          <div class="stat-lbl">Precisão dos Mísseis</div>
+        </div>
+      </div>
+
+      <button id="btn-rematch" class="btn-primary">
+        🔄 Revanche Rápida
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Floating Alerts -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/audio.js"></script>
+  <script src="/js/haptics.js"></script>
+  <script src="/js/game.js"></script>
+</body>
+</html>

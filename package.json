@@ -1,0 +1,24 @@
+{
+  "name": "batalha-naval-hightech",
+  "version": "1.0.0",
+  "description": "Batalha Naval High-Tech Multiplayer Mobile-First",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test_game.js"
+  },
+  "keywords": [
+    "battleship",
+    "multiplayer",
+    "websocket",
+    "game",
+    "mobile"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  }
+}
