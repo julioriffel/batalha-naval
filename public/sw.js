@@ -3,7 +3,7 @@
  * Caching tático offline e suporte a instalação como aplicativo nativo.
  */
 
-const CACHE_NAME = 'batalha-naval-v1.2';
+const CACHE_NAME = 'batalha-naval-v1.3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -73,5 +73,67 @@ self.addEventListener('fetch', (event) => {
           }
         });
       })
+  );
+});
+
+// --- PUSH NOTIFICATIONS ---
+self.addEventListener('push', (event) => {
+  let data = {
+    title: '⚓ Batalha Naval High-Tech',
+    body: 'Você recebeu um novo chamado tático!',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: '/' }
+  };
+
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || '/icons/icon-192.png',
+    badge: data.badge || '/icons/icon-192.png',
+    vibrate: [250, 100, 250, 100, 250],
+    tag: 'naval-challenge',
+    renotify: true,
+    data: data.data || { url: '/' },
+    actions: [
+      { action: 'accept', title: '⚔️ Aceitar Batalha' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = (event.notification.data && event.notification.data.url) 
+    ? event.notification.data.url 
+    : '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Se já houver uma aba aberta com o jogo, foca nela e navega para o link da partida
+      for (const client of windowClients) {
+        if (client.url && 'focus' in client) {
+          if ('navigate' in client) {
+            client.navigate(targetUrl);
+          }
+          return client.focus();
+        }
+      }
+      // Se não houver janela aberta, abre nova janela com a sala
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
   );
 });

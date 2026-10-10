@@ -5,6 +5,7 @@ const os = require('os');
 const net = require('net');
 const { WebSocketServer, WebSocket } = require('ws');
 const QRCode = require('qrcode');
+const webpush = require('web-push');
 
 let PORT = parseInt(process.env.PORT, 10) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -114,6 +115,253 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ error: 'Erro gerando QR Code' }));
     }
+  }
+
+  // --- API: PUSH NOTIFICATIONS & SISTEMA DE AMIGOS ---
+  // Helper para respostas JSON
+  const sendJson = (statusCode, data) => {
+    res.writeHead(statusCode, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+    res.end(JSON.stringify(data));
+  };
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+    return res.end();
+  }
+
+  // 1. Chave pública VAPID para registro do Service Worker
+  if (pathname === '/api/push/vapid-public-key') {
+    return sendJson(200, { publicKey: vapidKeys.publicKey });
+  }
+
+  // 2. Registro e Sincronização do Perfil do Jogador
+  if (pathname === '/api/player/sync' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const persistentId = (body.persistentId || '').trim();
+    const name = (body.name || 'Comandante').trim().substring(0, 15);
+    let code = (body.code || '').trim().toUpperCase();
+
+    if (!persistentId) {
+      return sendJson(400, { error: 'persistentId obrigatório' });
+    }
+
+    let player = Object.values(playersData).find(p => p.persistentId === persistentId);
+
+    if (!player) {
+      if (!code || playersData[code]) {
+        code = generateCommanderCode();
+      }
+      player = {
+        code,
+        persistentId,
+        name,
+        friends: [],
+        pushSubscription: null,
+        lastSeen: new Date().toISOString()
+      };
+      playersData[code] = player;
+    } else {
+      player.name = name;
+      player.lastSeen = new Date().toISOString();
+      code = player.code;
+    }
+
+    savePlayers(playersData);
+    return sendJson(200, {
+      code: player.code,
+      name: player.name,
+      persistentId: player.persistentId,
+      pushEnabled: !!player.pushSubscription
+    });
+  }
+
+  // 3. Ativar Inscrição de Notificações Push
+  if (pathname === '/api/push/subscribe' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const code = (body.code || '').trim().toUpperCase();
+    const subscription = body.subscription;
+
+    if (!code || !playersData[code] || !subscription) {
+      return sendJson(400, { error: 'Inscrição ou código de comandante inválido' });
+    }
+
+    playersData[code].pushSubscription = subscription;
+    playersData[code].lastSeen = new Date().toISOString();
+    savePlayers(playersData);
+
+    return sendJson(200, {
+      success: true,
+      message: 'Notificações push táticas ativadas com sucesso!'
+    });
+  }
+
+  // 4. Listar Amigos do Comandante
+  if (pathname === '/api/friends/list') {
+    const code = (parsedUrl.searchParams.get('code') || '').trim().toUpperCase();
+    const player = playersData[code];
+
+    if (!player) {
+      return sendJson(200, { friends: [] });
+    }
+
+    const friendsList = (player.friends || []).map(fCode => {
+      const f = playersData[fCode];
+      const isMutual = !!(f && f.friends && f.friends.includes(code));
+      return {
+        code: fCode,
+        name: f ? f.name : fCode,
+        isMutual,
+        pushEnabled: !!(f && f.pushSubscription),
+        lastSeen: f ? f.lastSeen : null
+      };
+    });
+
+    return sendJson(200, { friends: friendsList });
+  }
+
+  // 5. Adicionar Amigo por Código
+  if (pathname === '/api/friends/add' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const myCode = (body.myCode || '').trim().toUpperCase();
+    const targetCode = (body.targetCode || '').trim().toUpperCase();
+
+    if (!myCode || !targetCode) {
+      return sendJson(400, { error: 'Códigos inválidos' });
+    }
+
+    if (myCode === targetCode) {
+      return sendJson(400, { error: 'Você não pode adicionar seu próprio código como amigo.' });
+    }
+
+    const myPlayer = playersData[myCode];
+    if (!myPlayer) {
+      return sendJson(404, { error: 'Seu perfil de comandante não foi encontrado. Recarregue a página.' });
+    }
+
+    const targetPlayer = playersData[targetCode];
+    if (!targetPlayer) {
+      return sendJson(404, { error: `Nenhum comandante encontrado com o código ${targetCode}.` });
+    }
+
+    if (!myPlayer.friends) myPlayer.friends = [];
+    if (!myPlayer.friends.includes(targetCode)) {
+      myPlayer.friends.push(targetCode);
+      savePlayers(playersData);
+    }
+
+    const isMutual = !!(targetPlayer.friends && targetPlayer.friends.includes(myCode));
+
+    // Notifica em tempo real se o comandante alvo estiver online no WebSocket
+    wss.clients.forEach(cWs => {
+      if (cWs.friendCode === targetCode) {
+        send(cWs, 'friend_added_notice', {
+          fromCode: myCode,
+          fromName: myPlayer.name,
+          isMutual
+        });
+      }
+    });
+
+    return sendJson(200, {
+      success: true,
+      isMutual,
+      friend: {
+        code: targetPlayer.code,
+        name: targetPlayer.name,
+        isMutual,
+        pushEnabled: !!targetPlayer.pushSubscription
+      }
+    });
+  }
+
+  // 6. Remover Amigo
+  if (pathname === '/api/friends/remove' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const myCode = (body.myCode || '').trim().toUpperCase();
+    const targetCode = (body.targetCode || '').trim().toUpperCase();
+
+    const myPlayer = playersData[myCode];
+    if (myPlayer && myPlayer.friends) {
+      myPlayer.friends = myPlayer.friends.filter(c => c !== targetCode);
+      savePlayers(playersData);
+    }
+
+    return sendJson(200, { success: true });
+  }
+
+  // 7. Chamar Amigo para Partida via Push Notification
+  // REQUISITO: "Somente amigos podem chamar para a partida via push"
+  if (pathname === '/api/friends/challenge' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const myCode = (body.myCode || '').trim().toUpperCase();
+    const targetCode = (body.targetCode || '').trim().toUpperCase();
+
+    const myPlayer = playersData[myCode];
+    const targetPlayer = playersData[targetCode];
+
+    if (!myPlayer || !targetPlayer) {
+      return sendJson(404, { error: 'Comandante não encontrado.' });
+    }
+
+    const isMutual = myPlayer.friends && myPlayer.friends.includes(targetCode) &&
+                     targetPlayer.friends && targetPlayer.friends.includes(myCode);
+
+    if (!isMutual) {
+      return sendJson(403, {
+        error: `Apenas amigos mútuos podem se desafiar via notificação push! Peça para o Comandante ${targetPlayer.name} adicionar o seu código (${myCode}) aos amigos dele.`
+      });
+    }
+
+    if (!targetPlayer.pushSubscription) {
+      return sendJson(400, {
+        error: `O Comandante ${targetPlayer.name} é seu amigo, mas ainda não ativou as notificações push no celular ou navegador.`
+      });
+    }
+
+    const roomCode = generateRoomCode();
+    const origin = (body.origin || '').replace(/\/$/, '') || `http://${LOCAL_IP}:${PORT}`;
+    const battleUrl = `${origin}/?sala=${roomCode}&desafio=1`;
+
+    const pushPayload = JSON.stringify({
+      title: `⚔️ Desafio Naval de ${myPlayer.name}!`,
+      body: `${myPlayer.name} te chamou para combater na Batalha Naval! Toque para entrar na sala ${roomCode}.`,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: {
+        url: battleUrl,
+        roomCode,
+        challengerName: myPlayer.name
+      }
+    });
+
+    try {
+      await webpush.sendNotification(targetPlayer.pushSubscription, pushPayload);
+      console.log(`[WebPush] Desafio enviado de ${myCode} para ${targetCode} na sala ${roomCode}`);
+    } catch (pushErr) {
+      console.error('[WebPush] Erro enviando push notification:', pushErr.statusCode, pushErr.message);
+      if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+        targetPlayer.pushSubscription = null;
+        savePlayers(playersData);
+        return sendJson(400, {
+          error: 'A inscrição de notificações do amigo expirou. Ele precisa reativar o push no app.'
+        });
+      }
+    }
+
+    return sendJson(200, {
+      success: true,
+      roomCode,
+      message: `Desafio enviado com sucesso para ${targetPlayer.name}! Sala ${roomCode} pronta.`
+    });
   }
 
   // Static File Serving
@@ -251,6 +499,87 @@ function recordMatchResult(winnerName, loserName, winnerShots, winnerHits, loser
   return getSortedLeaderboard();
 }
 
+// --- Push Notifications (Web Push & VAPID) ---
+const VAPID_FILE = path.join(__dirname, 'data', 'vapid.json');
+
+function getOrCreateVapidKeys() {
+  try {
+    if (fs.existsSync(VAPID_FILE)) {
+      return JSON.parse(fs.readFileSync(VAPID_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Erro lendo vapid.json:', e);
+  }
+  const keys = webpush.generateVAPIDKeys();
+  const dir = path.dirname(VAPID_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(VAPID_FILE, JSON.stringify(keys, null, 2), 'utf8');
+  return keys;
+}
+
+const vapidKeys = getOrCreateVapidKeys();
+webpush.setVapidDetails(
+  'mailto:contato@bolsadedados.com.br',
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
+
+// --- Players & Friends Store ---
+const PLAYERS_FILE = path.join(__dirname, 'data', 'players.json');
+
+function loadPlayers() {
+  try {
+    if (fs.existsSync(PLAYERS_FILE)) {
+      return JSON.parse(fs.readFileSync(PLAYERS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Erro lendo players.json:', e);
+  }
+  return {};
+}
+
+function savePlayers(data) {
+  try {
+    const dir = path.dirname(PLAYERS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(PLAYERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Erro salvando players.json:', e);
+  }
+}
+
+let playersData = loadPlayers();
+
+function generateCommanderCode() {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let rand = '';
+  for (let i = 0; i < 4; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const code = `CMD-${rand}`;
+  return playersData[code] ? generateCommanderCode() : code;
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 1e6) {
+        req.destroy();
+        resolve({});
+      }
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body || '{}'));
+      } catch (e) {
+        resolve({});
+      }
+    });
+  });
+}
+
 // --- Rooms & Game State ---
 const rooms = new Map(); // roomCode -> room object
 
@@ -344,6 +673,7 @@ function broadcastToRoom(room, type, data = {}) {
 
 wss.on('connection', ws => {
   ws.isAlive = true;
+  ws.friendCode = null;
   ws.on('pong', () => { ws.isAlive = true; });
 
   let currentPlayerId = null;
@@ -363,9 +693,11 @@ wss.on('connection', ws => {
 
       // 1. CRIAR SALA
       if (type === 'create_room') {
-        const roomCode = generateRoomCode();
+        const roomCode = (payload.roomCode && !rooms.has(payload.roomCode)) ? payload.roomCode : generateRoomCode();
         const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
         const playerName = (payload.playerName || 'Comandante 1').trim().substring(0, 15);
+        const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
+        ws.friendCode = friendCode;
 
         // Se o cliente enviar seu origin (ex: https://batalha.bolsadedados.com.br), usa ele; caso contrário, IP local
         const origin = (payload.origin || '').replace(/\/$/, '') || `http://${LOCAL_IP}:${PORT}`;
@@ -389,6 +721,7 @@ wss.on('connection', ws => {
             {
               id: playerId,
               name: playerName,
+              friendCode,
               ws,
               ready: false,
               ships: [],
@@ -411,6 +744,7 @@ wss.on('connection', ws => {
           roomCode,
           playerId,
           playerName,
+          friendCode,
           joinUrl,
           qrDataUrl,
           localIp: LOCAL_IP,
@@ -423,6 +757,8 @@ wss.on('connection', ws => {
       if (type === 'join_room') {
         const roomCode = (payload.roomCode || '').toUpperCase().trim();
         const playerName = (payload.playerName || 'Comandante 2').trim().substring(0, 15);
+        const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
+        ws.friendCode = friendCode;
         const room = rooms.get(roomCode);
 
         if (!room) {
@@ -436,6 +772,7 @@ wss.on('connection', ws => {
         const newPlayer = {
           id: playerId,
           name: playerName,
+          friendCode,
           ws,
           ready: false,
           ships: [],
@@ -458,11 +795,13 @@ wss.on('connection', ws => {
           roomCode,
           playerId,
           playerName,
-          opponentName: room.players[0].name
+          opponentName: room.players[0].name,
+          opponentFriendCode: room.players[0].friendCode
         });
 
         send(room.players[0].ws, 'opponent_joined', {
-          opponentName: playerName
+          opponentName: playerName,
+          opponentFriendCode: friendCode
         });
 
         broadcastToRoom(room, 'start_placement', {
@@ -518,6 +857,7 @@ wss.on('connection', ws => {
               isYourTurn: isTurn,
               activePlayerName: startingPlayer.name,
               activePlayerId: startingPlayer.id,
+              opponentFriendCode: opp ? opp.friendCode : null,
               sessionScore: {
                 myWins: room.scores ? (room.scores[p.id] || 0) : 0,
                 opponentWins: room.scores ? (room.scores[opp.id] || 0) : 0,
@@ -653,6 +993,7 @@ wss.on('connection', ws => {
             hitsLanded: shooter.hitsLanded,
             accuracy: Math.round((shooter.hitsLanded / shooter.shotsFired) * 100),
             opponentFleet: defender.ships,
+            opponentFriendCode: defender.friendCode,
             sessionScore: {
               myWins: room.scores[shooter.id],
               opponentWins: room.scores[defender.id] || 0,
@@ -668,6 +1009,7 @@ wss.on('connection', ws => {
             hitsLanded: defender.hitsLanded,
             accuracy: defender.shotsFired > 0 ? Math.round((defender.hitsLanded / defender.shotsFired) * 100) : 0,
             opponentFleet: shooter.ships,
+            opponentFriendCode: shooter.friendCode,
             sessionScore: {
               myWins: room.scores[defender.id] || 0,
               opponentWins: room.scores[shooter.id],

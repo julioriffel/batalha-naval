@@ -5,6 +5,8 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    volumes:
+      - ./data:/app/data
     environment:
       - PORT=3000
     labels:

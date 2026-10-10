@@ -11,8 +11,17 @@
     ws: null,
     roomCode: null,
     playerId: null,
-    playerName: 'Comandante',
+    playerName: localStorage.getItem('naval_player_name') || 'Comandante',
     opponentName: 'Inimigo',
+    opponentFriendCode: null,
+    persistentId: localStorage.getItem('naval_player_uuid') || (function() {
+      const id = 'usr_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+      localStorage.setItem('naval_player_uuid', id);
+      return id;
+    })(),
+    friendCode: localStorage.getItem('naval_friend_code') || null,
+    pushEnabled: false,
+    friends: [],
     isHost: false,
     shipSpecs: [
       { id: 'carrier', name: 'Porta-Aviões', size: 5, icon: '🚢' },
@@ -149,11 +158,19 @@
         state.playerId = msg.playerId;
         state.isHost = false;
         state.opponentName = msg.opponentName;
+        if (msg.opponentFriendCode) {
+          state.opponentFriendCode = msg.opponentFriendCode;
+          updateOpponentFriendButtons();
+        }
         showToast(`Entrou na sala do Comandante ${msg.opponentName}!`);
         break;
 
       case 'opponent_joined':
         state.opponentName = msg.opponentName;
+        if (msg.opponentFriendCode) {
+          state.opponentFriendCode = msg.opponentFriendCode;
+          updateOpponentFriendButtons();
+        }
         showToast(`Comandante ${msg.opponentName} conectado ao radar!`);
         break;
 
@@ -175,6 +192,10 @@
         break;
 
       case 'battle_started':
+        if (msg.opponentFriendCode) {
+          state.opponentFriendCode = msg.opponentFriendCode;
+          updateOpponentFriendButtons();
+        }
         initBattlePhase(msg.isYourTurn, msg.activePlayerName);
         if (msg.sessionScore) {
           updateDuelScore(msg.sessionScore);
@@ -191,11 +212,21 @@
         break;
 
       case 'game_over':
+        if (msg.opponentFriendCode) {
+          state.opponentFriendCode = msg.opponentFriendCode;
+          updateOpponentFriendButtons();
+        }
         handleGameOver(msg);
         break;
 
       case 'leaderboard_data':
         renderLeaderboard(msg.leaderboard);
+        break;
+
+      case 'friend_added_notice':
+        showToast(`⭐ O Comandante ${msg.fromName} (${msg.fromCode}) adicionou você como amigo!`, 5000);
+        window.tacticalAudio.sonarPing();
+        fetchAndRenderFriends();
         break;
 
       case 'opponent_wants_rematch':
@@ -233,12 +264,21 @@
   const btnJoinRoom = document.getElementById('btn-join-room');
   const inputRoomCode = document.getElementById('input-room-code');
 
+  if (state.playerName) {
+    inputPlayerName.value = state.playerName;
+  }
+
   btnCreateRoom.addEventListener('click', async () => {
     window.tacticalAudio.click();
     window.tacticalHaptics.click();
     state.playerName = inputPlayerName.value.trim() || 'Comandante 1';
+    localStorage.setItem('naval_player_name', state.playerName);
     await initWebSocket();
-    sendWS('create_room', { playerName: state.playerName, origin: window.location.origin });
+    sendWS('create_room', {
+      playerName: state.playerName,
+      friendCode: state.friendCode,
+      origin: window.location.origin
+    });
   });
 
   btnJoinRoom.addEventListener('click', async () => {
@@ -250,8 +290,13 @@
       return;
     }
     state.playerName = inputPlayerName.value.trim() || 'Comandante 2';
+    localStorage.setItem('naval_player_name', state.playerName);
     await initWebSocket();
-    sendWS('join_room', { roomCode: code, playerName: state.playerName });
+    sendWS('join_room', {
+      roomCode: code,
+      playerName: state.playerName,
+      friendCode: state.friendCode
+    });
   });
 
   // Share / Copy Link Button
@@ -267,13 +312,30 @@
     });
   }
 
-  // --- URL Param Auto-Fill (?sala=XYZ) ---
+  // --- URL Param Auto-Fill (?sala=XYZ ou ?amigo=CMD-XYZ) ---
   const urlParams = new URLSearchParams(window.location.search);
   const paramSala = urlParams.get('sala');
+  const isChallenge = urlParams.get('desafio') === '1';
+
   if (paramSala) {
     inputRoomCode.value = paramSala.toUpperCase();
     inputRoomCode.focus();
-    showToast(`Código ${paramSala.toUpperCase()} carregado! Digite seu nome e entre.`);
+    if (isChallenge) {
+      showToast(`⚔️ DESAFIO PUSH RECEBIDO! Sala ${paramSala.toUpperCase()} carregada. Entre na partida!`, 6000);
+      window.tacticalAudio.turnAlertSound();
+    } else {
+      showToast(`Código ${paramSala.toUpperCase()} carregado! Digite seu nome e entre.`);
+    }
+  }
+
+  const paramAmigo = urlParams.get('amigo');
+  if (paramAmigo) {
+    const friendCandidate = paramAmigo.toUpperCase().trim();
+    setTimeout(() => {
+      if (confirm(`Deseja adicionar o Comandante com código ${friendCandidate} aos seus amigos?`)) {
+        addFriendByCode(friendCandidate);
+      }
+    }, 1000);
   }
 
   // --- SHIP PLACEMENT LOGIC ---
@@ -890,6 +952,431 @@
       }
     });
   }
+
+  // --- SISTEMA DE AMIGOS E NOTIFICAÇÕES PUSH ---
+  async function syncPlayerProfile() {
+    try {
+      const res = await fetch('/api/player/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          persistentId: state.persistentId,
+          name: state.playerName,
+          code: state.friendCode
+        })
+      });
+      const data = await res.json();
+      if (data.code) {
+        state.friendCode = data.code;
+        localStorage.setItem('naval_friend_code', data.code);
+        const codeDisplay = document.getElementById('my-display-friend-code');
+        if (codeDisplay) codeDisplay.textContent = data.code;
+      }
+      state.pushEnabled = !!data.pushEnabled;
+      updatePushStatusUI(state.pushEnabled);
+    } catch (e) {
+      console.warn('Erro sincronizando perfil do jogador:', e);
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  function updatePushStatusUI(active) {
+    const box = document.getElementById('push-status-box');
+    const title = document.getElementById('push-status-title');
+    const desc = document.getElementById('push-status-desc');
+    const btn = document.getElementById('btn-enable-push');
+    const icon = document.getElementById('push-status-icon');
+
+    if (!box || !btn) return;
+
+    if (active) {
+      box.classList.add('active');
+      if (icon) icon.textContent = '✅';
+      if (title) title.textContent = 'Notificações Push Ativas';
+      if (desc) desc.textContent = 'Você receberá os chamados de batalha dos seus amigos direto no celular!';
+      btn.textContent = 'Ativado';
+      btn.disabled = true;
+    } else {
+      box.classList.remove('active');
+      if (icon) icon.textContent = '🔔';
+      if (title) title.textContent = 'Notificações Push';
+      if (desc) desc.textContent = 'Ative para receber chamados de batalha mesmo fora do jogo.';
+      btn.textContent = 'Ativar';
+      btn.disabled = false;
+    }
+  }
+
+  async function checkPushSubscription() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        state.pushEnabled = true;
+        updatePushStatusUI(true);
+      }
+    } catch (e) {
+      console.warn('Erro verificando push subscription:', e);
+    }
+  }
+
+  async function subscribeToPushNotifications() {
+    window.tacticalAudio.click();
+    if (!('Notification' in window) || !('PushManager' in window)) {
+      showToast('⚠️ Seu navegador não suporta Web Push Notifications.');
+      return;
+    }
+
+    if (isIos() && !isInStandaloneMode()) {
+      showToast('📲 No iPhone: instale o app na Tela de Início primeiro para habilitar o Push!', 5000);
+      if (modalIosInstall) modalIosInstall.classList.add('active');
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        showToast('⚠️ Permissão de notificações não concedida no navegador.');
+        return;
+      }
+
+      const vapidRes = await fetch('/api/push/vapid-public-key');
+      const vapidData = await vapidRes.json();
+      if (!vapidData.publicKey) throw new Error('Chave VAPID não recebida');
+
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey)
+        });
+      }
+
+      const subRes = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: state.friendCode,
+          subscription: sub
+        })
+      });
+
+      const subData = await subRes.json();
+      if (subData.success) {
+        state.pushEnabled = true;
+        updatePushStatusUI(true);
+        window.tacticalAudio.sonarPing();
+        showToast('🔔 Notificações push ativadas com sucesso! Você receberá desafios de amigos.');
+      } else {
+        showToast(subData.error || 'Erro ao ativar push.');
+      }
+    } catch (err) {
+      console.error('Erro ao subscrever push:', err);
+      showToast('Falha ao ativar notificações push.');
+    }
+  }
+
+  async function fetchAndRenderFriends() {
+    if (!state.friendCode) await syncPlayerProfile();
+    const container = document.getElementById('friends-list-container');
+    const badge = document.getElementById('friends-count-badge');
+    if (!container) return;
+
+    try {
+      const res = await fetch(`/api/friends/list?code=${state.friendCode}`);
+      const data = await res.json();
+      const friends = data.friends || [];
+      state.friends = friends;
+
+      if (badge) badge.textContent = friends.length;
+
+      if (friends.length === 0) {
+        container.innerHTML = `
+          <div class="friends-empty-hint">
+            Você ainda não adicionou nenhum comandante amigo.<br>
+            Compartilhe seu código <strong>${state.friendCode || '...'}</strong> ou adicione adversários após as batalhas!
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = friends.map(f => {
+        const canChallenge = f.isMutual && f.pushEnabled;
+        const challengeTitle = !f.isMutual 
+          ? 'Apenas amigos mútuos podem ser desafiados via push. Ele também precisa adicionar seu código.' 
+          : (!f.pushEnabled ? 'O amigo precisa ativar notificações push no app.' : 'Chamar para uma Batalha Naval agora!');
+
+        return `
+          <div class="friend-item ${f.isMutual ? 'mutual' : ''}">
+            <div class="friend-info">
+              <div class="friend-name-row">
+                <span class="friend-name">${escapeHtml(f.name)}</span>
+                <span style="font-size:0.75rem; color:var(--text-dim);">${f.code}</span>
+              </div>
+              <div class="friend-badges">
+                ${f.isMutual ? '<span class="badge-mutual">✅ Amigos Mútuos</span>' : '<span class="badge-pending">⏳ Aguardando ele te adicionar</span>'}
+                ${f.pushEnabled ? '<span class="badge-push-on">🔔 Push Ativo</span>' : '<span class="badge-push-off">🔕 Sem Push</span>'}
+              </div>
+            </div>
+            <div class="friend-actions">
+              <button class="btn-challenge" ${canChallenge ? '' : 'disabled'} title="${challengeTitle}" data-code="${f.code}">
+                ⚔️ Chamar
+              </button>
+              <button class="btn-remove-friend" title="Remover amigo" data-code="${f.code}">
+                🗑️
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.btn-challenge').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.getAttribute('data-code');
+          challengeFriend(code);
+        });
+      });
+
+      container.querySelectorAll('.btn-remove-friend').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.getAttribute('data-code');
+          removeFriendByCode(code);
+        });
+      });
+
+    } catch (err) {
+      console.error('Erro buscando lista de amigos:', err);
+    }
+  }
+
+  async function addFriendByCode(targetCode) {
+    if (!targetCode) return;
+    targetCode = targetCode.trim().toUpperCase();
+    if (!targetCode) return;
+
+    if (targetCode === state.friendCode) {
+      showToast('Você não pode adicionar seu próprio código!');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/friends/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          myCode: state.friendCode,
+          targetCode
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.tacticalAudio.sonarPing();
+        if (data.isMutual) {
+          showToast(`🎉 Comandante ${data.friend.name} é agora seu amigo mútuo! Vocês podem se desafiar via push.`);
+        } else {
+          showToast(`⭐ Comandante ${data.friend.name} adicionado! Quando ele te adicionar de volta, vocês serão amigos mútuos.`);
+        }
+        const input = document.getElementById('input-add-friend-code');
+        if (input) input.value = '';
+        fetchAndRenderFriends();
+      } else {
+        showToast(`⚠️ ${data.error || 'Erro ao adicionar amigo'}`);
+      }
+    } catch (err) {
+      console.error('Erro ao adicionar amigo:', err);
+      showToast('Erro de conexão ao adicionar amigo.');
+    }
+  }
+
+  async function removeFriendByCode(targetCode) {
+    if (!confirm(`Remover o Comandante ${targetCode} dos seus amigos?`)) return;
+    try {
+      await fetch('/api/friends/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          myCode: state.friendCode,
+          targetCode
+        })
+      });
+      showToast('Amigo removido da sua lista.');
+      fetchAndRenderFriends();
+    } catch (err) {
+      console.error('Erro ao remover amigo:', err);
+    }
+  }
+
+  async function challengeFriend(targetCode) {
+    window.tacticalAudio.click();
+    showToast(`📡 Enviando convite de batalha para ${targetCode}...`);
+
+    try {
+      const res = await fetch('/api/friends/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          myCode: state.friendCode,
+          targetCode,
+          origin: window.location.origin
+        })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        showToast(`⚠️ ${data.error || 'Não foi possível enviar o desafio'}`);
+        return;
+      }
+
+      // Sucesso! Fecha modal de amigos e entra na sala criada
+      const modalFriends = document.getElementById('modal-friends');
+      if (modalFriends) modalFriends.classList.remove('active');
+
+      state.roomCode = data.roomCode;
+      state.playerName = inputPlayerName.value.trim() || 'Comandante 1';
+      await initWebSocket();
+
+      sendWS('create_room', {
+        playerName: state.playerName,
+        friendCode: state.friendCode,
+        roomCode: data.roomCode,
+        origin: window.location.origin
+      });
+
+      window.tacticalAudio.sonarPing();
+      showToast(`🚀 Notificação enviada para ${targetCode}! Aguardando na sala ${data.roomCode}...`, 5000);
+    } catch (err) {
+      console.error('Erro ao desafiar amigo:', err);
+      showToast('Falha de conexão ao enviar desafio.');
+    }
+  }
+
+  function updateOpponentFriendButtons() {
+    const btnBattleAddFriend = document.getElementById('btn-battle-add-friend');
+    const btnGameOverAddFriend = document.getElementById('btn-gameover-add-friend');
+
+    if (state.opponentFriendCode && state.opponentFriendCode !== state.friendCode) {
+      if (btnBattleAddFriend) btnBattleAddFriend.style.display = 'inline-block';
+      if (btnGameOverAddFriend) btnGameOverAddFriend.style.display = 'block';
+    }
+  }
+
+  const btnBattleAddFriend = document.getElementById('btn-battle-add-friend');
+  if (btnBattleAddFriend) {
+    btnBattleAddFriend.addEventListener('click', async () => {
+      window.tacticalAudio.click();
+      if (state.opponentFriendCode) {
+        await addFriendByCode(state.opponentFriendCode);
+        btnBattleAddFriend.textContent = '✅ Amigo!';
+      }
+    });
+  }
+
+  const btnGameOverAddFriend = document.getElementById('btn-gameover-add-friend');
+  if (btnGameOverAddFriend) {
+    btnGameOverAddFriend.addEventListener('click', async () => {
+      window.tacticalAudio.click();
+      if (state.opponentFriendCode) {
+        await addFriendByCode(state.opponentFriendCode);
+        btnGameOverAddFriend.textContent = '✅ Amigo Adicionado!';
+      }
+    });
+  }
+
+  const modalFriends = document.getElementById('modal-friends');
+  const btnOpenFriends = document.getElementById('btn-open-friends');
+  const btnLobbyFriends = document.getElementById('btn-lobby-friends');
+  const btnCloseFriendsModal = document.getElementById('btn-close-friends-modal');
+  const btnCopyFriendCode = document.getElementById('btn-copy-friend-code');
+  const btnShareFriendCode = document.getElementById('btn-share-friend-code');
+  const btnEnablePush = document.getElementById('btn-enable-push');
+  const btnSubmitAddFriend = document.getElementById('btn-submit-add-friend');
+  const inputAddFriendCode = document.getElementById('input-add-friend-code');
+
+  function openFriendsModal() {
+    window.tacticalAudio.click();
+    if (modalFriends) modalFriends.classList.add('active');
+    fetchAndRenderFriends();
+  }
+
+  if (btnOpenFriends) btnOpenFriends.addEventListener('click', openFriendsModal);
+  if (btnLobbyFriends) btnLobbyFriends.addEventListener('click', openFriendsModal);
+
+  if (btnCloseFriendsModal) {
+    btnCloseFriendsModal.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      if (modalFriends) modalFriends.classList.remove('active');
+    });
+  }
+
+  if (modalFriends) {
+    modalFriends.addEventListener('click', (e) => {
+      if (e.target === modalFriends) modalFriends.classList.remove('active');
+    });
+  }
+
+  if (btnCopyFriendCode) {
+    btnCopyFriendCode.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      if (!state.friendCode) return;
+      navigator.clipboard.writeText(state.friendCode).then(() => {
+        showToast(`📋 Código ${state.friendCode} copiado!`);
+      }).catch(() => {
+        showToast(`Seu código é ${state.friendCode}`);
+      });
+    });
+  }
+
+  if (btnShareFriendCode) {
+    btnShareFriendCode.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      if (!state.friendCode) return;
+      const shareUrl = `${window.location.origin}/?amigo=${state.friendCode}`;
+      if (navigator.share) {
+        navigator.share({
+          title: 'Batalha Naval High-Tech',
+          text: `Adicione o Comandante ${state.playerName} (${state.friendCode}) na Batalha Naval!`,
+          url: shareUrl
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          showToast('📋 Link de convite copiado!');
+        });
+      }
+    });
+  }
+
+  if (btnEnablePush) {
+    btnEnablePush.addEventListener('click', subscribeToPushNotifications);
+  }
+
+  if (btnSubmitAddFriend && inputAddFriendCode) {
+    btnSubmitAddFriend.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      addFriendByCode(inputAddFriendCode.value);
+    });
+    inputAddFriendCode.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        window.tacticalAudio.click();
+        addFriendByCode(inputAddFriendCode.value);
+      }
+    });
+  }
+
+  // Inicializa o perfil e verifica suporte a push no carregamento
+  syncPlayerProfile();
+  checkPushSubscription();
 
   // --- GRID RENDER UTILITY ---
   function renderGrid(container, isInteractive, onClick, onHover) {

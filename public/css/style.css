@@ -1279,3 +1279,327 @@ body {
   color: var(--cyan);
   font-weight: 700;
 }
+
+/* --- BOTÃO DE AMIGOS NO HUD & DUELO --- */
+.friends-btn {
+  border-color: rgba(0, 240, 255, 0.4);
+  color: var(--cyan);
+}
+
+.btn-micro-friend {
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid var(--cyan);
+  border-radius: 12px;
+  color: var(--cyan);
+  font-size: 0.68rem;
+  padding: 2px 7px;
+  cursor: pointer;
+  margin-left: 6px;
+  font-weight: 700;
+  transition: all 0.2s;
+  vertical-align: middle;
+}
+
+.btn-micro-friend:hover, .btn-micro-friend:active {
+  background: var(--cyan);
+  color: #000;
+}
+
+/* --- MODAL DE AMIGOS & PUSH --- */
+.modal-friends-card {
+  max-width: 500px;
+  padding: 20px 16px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.my-friend-code-card {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.12), rgba(0, 0, 0, 0.4));
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.my-friend-code-card .code-label {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+}
+
+.my-friend-code-card .code-val {
+  font-size: 1.15rem;
+  color: var(--cyan);
+  letter-spacing: 2px;
+  font-weight: 800;
+  text-shadow: var(--cyan-glow);
+}
+
+.code-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-code-action {
+  background: var(--bg-surface);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-code-action:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* Push Status Card */
+.push-status-card {
+  background: rgba(255, 170, 0, 0.08);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.push-status-card.active {
+  background: rgba(0, 255, 136, 0.08);
+  border-color: rgba(0, 255, 136, 0.35);
+}
+
+.push-status-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.push-status-icon {
+  font-size: 1.4rem;
+}
+
+.push-status-info strong {
+  font-size: 0.84rem;
+  display: block;
+  color: #ffaa00;
+}
+
+.push-status-card.active .push-status-info strong {
+  color: #00ff88;
+}
+
+.push-status-info p {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+  line-height: 1.25;
+}
+
+.btn-push-action {
+  background: var(--cyan);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.push-status-card.active .btn-push-action {
+  background: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  cursor: default;
+}
+
+/* Add Friend Form */
+.add-friend-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.add-friend-form input {
+  flex: 1;
+  font-size: 0.85rem;
+  padding: 10px 12px;
+}
+
+/* Friends List */
+.friends-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.friends-count-badge {
+  background: rgba(0, 240, 255, 0.2);
+  color: var(--cyan);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.friends-list-wrapper {
+  overflow-y: auto;
+  max-height: 38vh;
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: var(--radius-sm);
+  background: var(--bg-dark);
+  padding: 6px;
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.friends-empty-hint {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 24px 12px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.friend-item {
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.friend-item.mutual {
+  border-color: rgba(0, 240, 255, 0.25);
+}
+
+.friend-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.friend-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.friend-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friend-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.badge-mutual {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.badge-pending {
+  background: rgba(255, 170, 0, 0.15);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.3);
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.badge-push-on {
+  color: var(--cyan);
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.badge-push-off {
+  color: var(--text-dim);
+  font-size: 0.65rem;
+}
+
+.friend-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-challenge {
+  background: linear-gradient(135deg, #00f0ff, #0088ff);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-challenge:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-remove-friend {
+  background: transparent;
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #ff3b30;
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-remove-friend:hover {
+  background: rgba(255, 59, 48, 0.15);
+}

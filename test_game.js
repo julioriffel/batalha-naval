@@ -31,6 +31,77 @@ async function runTest() {
   }
   console.log(`✅ /api/leaderboard OK (${leaderboardApi.leaderboard.length} registros)`);
 
+  function postJson(path, body) {
+    return new Promise((resolve, reject) => {
+      const dataStr = JSON.stringify(body);
+      const req = http.request({
+        hostname: 'localhost',
+        port: PORT,
+        path,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(dataStr)
+        }
+      }, res => {
+        let resData = '';
+        res.on('data', c => resData += c);
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode, body: JSON.parse(resData) });
+          } catch (e) {
+            resolve({ status: res.statusCode, body: resData });
+          }
+        });
+      });
+      req.on('error', reject);
+      req.write(dataStr);
+      req.end();
+    });
+  }
+
+  // 1.2 Testar chave pública VAPID
+  const vapidKeyRes = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${PORT}/api/push/vapid-public-key`, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  if (!vapidKeyRes.publicKey) throw new Error('VAPID public key não retornada');
+  console.log('✅ /api/push/vapid-public-key OK');
+
+  // 1.3 Testar registro de jogadores (Comandante A e Comandante B)
+  const uniqueSuffix = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+  const syncA = await postJson('/api/player/sync', { persistentId: 'uuid-teste-a-' + uniqueSuffix, name: 'Comandante Alfa' });
+  const syncB = await postJson('/api/player/sync', { persistentId: 'uuid-teste-b-' + uniqueSuffix, name: 'Comandante Bravo' });
+  const codeA = syncA.body.code;
+  const codeB = syncB.body.code;
+  if (!codeA || !codeB || !codeA.startsWith('CMD-') || !codeB.startsWith('CMD-')) {
+    throw new Error('Códigos de comandante inválidos gerados pelo sync');
+  }
+  console.log(`✅ Registro de jogadores OK: Alfa (${codeA}) e Bravo (${codeB})`);
+
+  // 1.4 Testar adição de amigo unidirecional (Alfa adiciona Bravo)
+  const add1 = await postJson('/api/friends/add', { myCode: codeA, targetCode: codeB });
+  if (add1.body.isMutual !== false) throw new Error('Amizade não deveria ser mútua ainda');
+  console.log('✅ Alfa adicionou Bravo aos amigos (status: pendente retribuição)');
+
+  // 1.5 Testar regra de segurança: Somente amigos mútuos podem chamar para partida via push!
+  const chalFail = await postJson('/api/friends/challenge', { myCode: codeA, targetCode: codeB });
+  if (chalFail.status !== 403) throw new Error(`Deveria retornar 403 para não-mútuo, retornou ${chalFail.status}`);
+  console.log('✅ Bloqueio de push para não-amigos validado com sucesso (403)');
+
+  // 1.6 Bravo adiciona Alfa de volta -> torna-se amizade mútua!
+  const add2 = await postJson('/api/friends/add', { myCode: codeB, targetCode: codeA });
+  if (add2.body.isMutual !== true) throw new Error('Amizade deveria ser mútua agora');
+  console.log('✅ Bravo retribuiu amizade (status: amigos mútuos)');
+
+  // 1.7 Bravo tenta ser chamado sem ter push ativado
+  const chalNoPush = await postJson('/api/friends/challenge', { myCode: codeA, targetCode: codeB });
+  if (chalNoPush.status !== 400) throw new Error('Deveria avisar que push não está ativo');
+  console.log('✅ Validação de push ausente verificada com sucesso (400)');
+
   // 2. Conectar Jogador 1 (Host)
   const ws1 = new WebSocket(`ws://localhost:${PORT}`);
   let roomCode = '';

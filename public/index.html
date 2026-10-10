@@ -26,6 +26,7 @@
       <span class="brand-title">Batalha Naval</span>
     </div>
     <div class="hud-actions">
+      <button id="btn-open-friends" class="icon-btn friends-btn" title="Comandantes Amigos">👥 Amigos</button>
       <button id="btn-open-ranking" class="icon-btn ranking-btn" title="Classificação dos Comandantes">🏆 Ranking</button>
       <button id="btn-install-app" class="icon-btn install-btn" style="display: none;" title="Instalar no Dispositivo">📲 Instalar</button>
       <button id="btn-mute" class="icon-btn" title="Alternar Som">🔊 Som</button>
@@ -81,9 +82,14 @@
           <span>🎯</span> Entrar na Partida
         </button>
 
-        <button id="btn-lobby-ranking" class="btn-secondary" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
-          <span>🏆</span> Ver Ranking de Comandantes
-        </button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button id="btn-lobby-friends" class="btn-secondary" style="border-color: rgba(0, 240, 255, 0.4); color: var(--cyan);">
+            <span>👥</span> Amigos & Push
+          </button>
+          <button id="btn-lobby-ranking" class="btn-secondary" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
+            <span>🏆</span> Ranking
+          </button>
+        </div>
 
         <!-- Install PWA Card in Lobby -->
         <div id="lobby-install-box" class="lobby-install-card" style="display: none;">
@@ -167,6 +173,7 @@
         <div class="duel-player-tag opp">
           <span id="duel-opp-score" class="duel-p-score">0</span>
           <span id="duel-opp-name" class="duel-p-name">Inimigo</span>
+          <button id="btn-battle-add-friend" class="btn-micro-friend" title="Adicionar oponente aos amigos" style="display: none;">⭐ +Amigo</button>
         </div>
       </div>
       
@@ -251,10 +258,68 @@
         <button id="btn-rematch" class="btn-primary">
           🔄 Revanche Rápida
         </button>
+        <button id="btn-gameover-add-friend" class="btn-secondary" style="border-color: rgba(0, 240, 255, 0.4); color: var(--cyan); display: none;">
+          <span>⭐</span> Adicionar Adversário aos Amigos
+        </button>
         <button id="btn-gameover-ranking" class="btn-secondary" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
           🏆 Ver Ranking Geral
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Comandantes Amigos & Notificações Push -->
+  <div id="modal-friends" class="modal-overlay">
+    <div class="modal-card modal-friends-card">
+      <h2 class="modal-title" style="color: var(--cyan); font-size: 1.35rem;">👥 Comandantes Amigos</h2>
+      <p class="lobby-subtitle" style="margin-bottom: 12px;">Desafie seus amigos com notificação push direto no celular</p>
+
+      <!-- Player Friend Code Box -->
+      <div class="my-friend-code-card">
+        <div class="code-info">
+          <span class="code-label">SEU CÓDIGO DE COMANDANTE</span>
+          <div class="code-val-row">
+            <strong id="my-display-friend-code" class="code-val">CMD-....</strong>
+          </div>
+        </div>
+        <div class="code-actions">
+          <button id="btn-copy-friend-code" class="btn-code-action" title="Copiar Código">📋 Copiar</button>
+          <button id="btn-share-friend-code" class="btn-code-action" title="Compartilhar Link">📲 Convidar</button>
+        </div>
+      </div>
+
+      <!-- Push Notification Status & Enable Button -->
+      <div id="push-status-box" class="push-status-card">
+        <div class="push-status-info">
+          <span id="push-status-icon" class="push-status-icon">🔔</span>
+          <div>
+            <strong id="push-status-title">Notificações Push</strong>
+            <p id="push-status-desc">Ative para receber chamados de batalha mesmo fora do jogo.</p>
+          </div>
+        </div>
+        <button id="btn-enable-push" class="btn-push-action">Ativar</button>
+      </div>
+
+      <!-- Add Friend by Code Form -->
+      <div class="add-friend-form">
+        <input type="text" id="input-add-friend-code" class="input-tactical" placeholder="Código (Ex: CMD-8A2F)" maxlength="10" style="text-transform: uppercase; letter-spacing: 1px;">
+        <button id="btn-submit-add-friend" class="btn-primary" style="white-space: nowrap; padding: 10px 14px;">➕ Adicionar</button>
+      </div>
+
+      <!-- Friends List -->
+      <div class="friends-list-header">
+        <span class="friends-list-title">Seus Amigos</span>
+        <span id="friends-count-badge" class="friends-count-badge">0</span>
+      </div>
+      <div class="friends-list-wrapper">
+        <div id="friends-list-container" class="friends-list">
+          <div class="friends-empty-hint">Nenhum amigo adicionado ainda. Compartilhe seu código ou adicione adversários após as batalhas!</div>
+        </div>
+      </div>
+
+      <button id="btn-close-friends-modal" class="btn-primary" style="margin-top: 14px;">
+        Fechar
+      </button>
     </div>
   </div>
 
