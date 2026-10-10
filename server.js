@@ -138,6 +138,11 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
+  // 0. Listar Salas Públicas em Aberto
+  if (pathname === '/api/rooms/public') {
+    return sendJson(200, { rooms: getPublicWaitingRooms() });
+  }
+
   // 1. Chave pública VAPID para registro do Service Worker
   if (pathname === '/api/push/vapid-public-key') {
     return sendJson(200, { publicKey: vapidKeys.publicKey });
@@ -592,6 +597,22 @@ function generateRoomCode() {
   return rooms.has(code) ? generateRoomCode() : code;
 }
 
+function getPublicWaitingRooms() {
+  const list = [];
+  for (const [code, room] of rooms.entries()) {
+    if (room.isPublic && room.state === 'waiting' && room.players.length === 1) {
+      const host = room.players[0];
+      list.push({
+        roomCode: code,
+        hostName: host.name,
+        hostFriendCode: host.friendCode || null,
+        createdAt: room.createdAt || new Date().toISOString()
+      });
+    }
+  }
+  return list;
+}
+
 function createEmptyGrid() {
   return Array.from({ length: 10 }, () => Array(10).fill(null));
 }
@@ -671,6 +692,15 @@ function broadcastToRoom(room, type, data = {}) {
   });
 }
 
+function broadcastPublicRooms() {
+  const publicRooms = getPublicWaitingRooms();
+  wss.clients.forEach(client => {
+    if (client && client.readyState === WebSocket.OPEN) {
+      send(client, 'public_rooms_updated', { rooms: publicRooms });
+    }
+  });
+}
+
 wss.on('connection', ws => {
   ws.isAlive = true;
   ws.friendCode = null;
@@ -691,12 +721,20 @@ wss.on('connection', ws => {
         });
       }
 
+      // 0.1 CONSULTAR SALAS PÚBLICAS EM ABERTO
+      if (type === 'get_public_rooms') {
+        return send(ws, 'public_rooms_updated', {
+          rooms: getPublicWaitingRooms()
+        });
+      }
+
       // 1. CRIAR SALA
       if (type === 'create_room') {
         const roomCode = (payload.roomCode && !rooms.has(payload.roomCode)) ? payload.roomCode : generateRoomCode();
         const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
         const playerName = (payload.playerName || 'Comandante 1').trim().substring(0, 15);
         const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
+        const isPublic = payload.isPublic !== false; // Padrão pública a menos que venha false
         ws.friendCode = friendCode;
 
         // Se o cliente enviar seu origin (ex: https://batalha.bolsadedados.com.br), usa ele; caso contrário, IP local
@@ -715,6 +753,8 @@ wss.on('connection', ws => {
 
         const room = {
           code: roomCode,
+          isPublic,
+          createdAt: new Date().toISOString(),
           state: 'waiting', // waiting -> placement -> battle -> gameover
           scores: { [playerId]: 0 },
           players: [
@@ -745,11 +785,16 @@ wss.on('connection', ws => {
           playerId,
           playerName,
           friendCode,
+          isPublic,
           joinUrl,
           qrDataUrl,
           localIp: LOCAL_IP,
           port: PORT
         });
+
+        if (isPublic) {
+          broadcastPublicRooms();
+        }
         return;
       }
 
@@ -789,6 +834,10 @@ wss.on('connection', ws => {
         room.state = 'placement';
         currentPlayerId = playerId;
         currentRoomCode = roomCode;
+
+        if (room.isPublic) {
+          broadcastPublicRooms();
+        }
 
         // Notify both players to begin fleet placement
         send(ws, 'room_joined', {
@@ -1072,14 +1121,17 @@ wss.on('connection', ws => {
     const room = rooms.get(currentRoomCode);
     if (!room) return;
 
+    const wasPublic = room.isPublic;
     // Remover jogador ou notificar adversário
     const remaining = room.players.filter(p => p.id !== currentPlayerId);
     if (remaining.length === 0) {
       rooms.delete(currentRoomCode);
+      if (wasPublic) broadcastPublicRooms();
       console.log(`[Sala ${currentRoomCode}] Encerrada (todos desconectados).`);
     } else {
       room.players = remaining;
       room.state = 'waiting';
+      if (wasPublic) broadcastPublicRooms();
       const opponent = remaining[0];
       if (opponent && opponent.ws) {
         send(opponent.ws, 'opponent_disconnected', {

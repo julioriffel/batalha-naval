@@ -102,7 +102,50 @@ async function runTest() {
   if (chalNoPush.status !== 400) throw new Error('Deveria avisar que push não está ativo');
   console.log('✅ Validação de push ausente verificada com sucesso (400)');
 
-  // 2. Conectar Jogador 1 (Host)
+  // 1.8 Testar radar de salas públicas e privadas
+  const initialPublicRooms = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${PORT}/api/rooms/public`, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  if (!Array.isArray(initialPublicRooms.rooms)) {
+    throw new Error('API /api/rooms/public não retornou array de salas');
+  }
+  console.log('✅ /api/rooms/public endpoint OK');
+
+  // Testar criação de sala PRIVADA (não deve aparecer no radar)
+  const wsPriv = new WebSocket(`ws://localhost:${PORT}`);
+  await new Promise(resolve => wsPriv.on('open', resolve));
+  let privRoomCode = '';
+  const privCreated = new Promise(resolve => {
+    wsPriv.on('message', m => {
+      const d = JSON.parse(m.toString());
+      if (d.type === 'room_created') {
+        privRoomCode = d.roomCode;
+        if (d.isPublic !== false) throw new Error('Sala privada deveria ter isPublic === false');
+        resolve();
+      }
+    });
+  });
+  wsPriv.send(JSON.stringify({ type: 'create_room', playerName: 'Host Oculto', isPublic: false }));
+  await privCreated;
+
+  const afterPrivRooms = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${PORT}/api/rooms/public`, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  if (afterPrivRooms.rooms.some(r => r.roomCode === privRoomCode)) {
+    throw new Error('Sala privada apareceu indevidamente na listagem de salas públicas!');
+  }
+  console.log('✅ Sala privada criada e NÃO listada no radar público');
+  wsPriv.close();
+
+  // 2. Conectar Jogador 1 (Host da sala PÚBLICA)
   const ws1 = new WebSocket(`ws://localhost:${PORT}`);
   let roomCode = '';
 
@@ -114,14 +157,29 @@ async function runTest() {
       const data = JSON.parse(msg.toString());
       if (data.type === 'room_created') {
         roomCode = data.roomCode;
-        console.log(`✅ Sala criada com código: ${roomCode}`);
+        if (data.isPublic !== true) throw new Error('Sala pública deveria ter isPublic === true');
+        console.log(`✅ Sala pública criada com código: ${roomCode}`);
         resolve(data);
       }
     });
   });
 
-  ws1.send(JSON.stringify({ type: 'create_room', playerName: 'Comandante Alfa' }));
+  ws1.send(JSON.stringify({ type: 'create_room', playerName: 'Comandante Alfa', isPublic: true }));
   await p1Created;
+
+  // Verificar se a sala pública aparece na listagem
+  const afterPubRooms = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${PORT}/api/rooms/public`, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  const foundPubRoom = afterPubRooms.rooms.find(r => r.roomCode === roomCode);
+  if (!foundPubRoom || foundPubRoom.hostName !== 'Comandante Alfa') {
+    throw new Error('Sala pública não encontrada no radar /api/rooms/public');
+  }
+  console.log('✅ Sala pública encontrada com sucesso no radar de partidas abertas!');
 
   // 3. Conectar Jogador 2
   const ws2 = new WebSocket(`ws://localhost:${PORT}`);
@@ -136,6 +194,19 @@ async function runTest() {
   ws2.send(JSON.stringify({ type: 'join_room', roomCode, playerName: 'Comandante Bravo' }));
   await placementStarted;
   console.log('✅ Ambos os jogadores entraram na fase de posicionamento');
+
+  // Verificar se a sala saiu do radar público agora que tem 2 jogadores
+  const afterJoinRooms = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${PORT}/api/rooms/public`, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  if (afterJoinRooms.rooms.some(r => r.roomCode === roomCode)) {
+    throw new Error('Sala ainda está listada como aberta após início de partida!');
+  }
+  console.log('✅ Sala removida do radar público após entrada do segundo jogador');
 
   // 4. Posicionar frotas válidas para ambos os jogadores
   const fleetP1 = [

@@ -1603,3 +1603,233 @@ body {
 .btn-remove-friend:hover {
   background: rgba(255, 59, 48, 0.15);
 }
+
+/* --- PRIVACIDADE DA SALA (PÚBLICA / PRIVADA) --- */
+.privacy-selector-wrapper {
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.privacy-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.privacy-toggle-card {
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.privacy-toggle-card:hover {
+  border-color: rgba(0, 240, 255, 0.4);
+}
+
+.privacy-toggle-card.active {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.privacy-toggle-card .privacy-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.privacy-toggle-card .privacy-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.privacy-toggle-card .privacy-text strong {
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.privacy-toggle-card.active .privacy-text strong {
+  color: var(--cyan);
+}
+
+.privacy-toggle-card .privacy-text small {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+/* --- LISTA DE BATALHAS EM ABERTO (RADAR PÚBLICO) --- */
+.open-rooms-card {
+  background: linear-gradient(180deg, rgba(7, 16, 30, 0.85), rgba(4, 9, 18, 0.95));
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 14px 0 6px;
+  text-align: left;
+}
+
+.open-rooms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.open-rooms-title-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-main);
+}
+
+.radar-live-blip {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green-tactical);
+  box-shadow: 0 0 8px var(--green-tactical);
+  animation: pulseBlip 1.6s infinite ease-in-out;
+}
+
+@keyframes pulseBlip {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+.badge-rooms-count {
+  background: rgba(0, 240, 255, 0.2);
+  color: var(--cyan);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.btn-refresh-rooms {
+  background: transparent;
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  color: var(--cyan);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.btn-refresh-rooms:hover {
+  background: var(--cyan);
+  color: #000;
+}
+
+.open-rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.rooms-loading-hint, .open-rooms-empty {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  padding: 14px 6px;
+  line-height: 1.35;
+}
+
+.public-room-item {
+  background: var(--bg-surface);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.public-room-item:hover {
+  border-color: var(--cyan);
+  box-shadow: var(--cyan-glow);
+}
+
+.public-room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.public-room-host {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.public-room-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+}
+
+.room-tag-pill {
+  background: rgba(0, 240, 255, 0.15);
+  color: var(--cyan);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.room-time-ago {
+  color: var(--text-dim);
+}
+
+.btn-join-public-room {
+  background: linear-gradient(135deg, #00f0ff, #0088ff);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+}
+
+.btn-join-public-room:hover, .btn-join-public-room:active {
+  transform: translateY(-1px);
+  box-shadow: var(--cyan-glow);
+}
+
+/* Tag de privacidade na tela de espera */
+.waiting-privacy-tag {
+  display: inline-block;
+  font-size: 0.76rem;
+  color: var(--cyan);
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-top: -4px;
+  margin-bottom: 12px;
+}

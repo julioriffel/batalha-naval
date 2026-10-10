@@ -22,6 +22,7 @@
     friendCode: localStorage.getItem('naval_friend_code') || null,
     pushEnabled: false,
     friends: [],
+    isPublicRoom: true,
     isHost: false,
     shipSpecs: [
       { id: 'carrier', name: 'Porta-Aviões', size: 5, icon: '🚢' },
@@ -149,8 +150,28 @@
         document.getElementById('display-room-code').textContent = msg.roomCode;
         document.getElementById('qr-img').src = msg.qrDataUrl;
         document.getElementById('network-ip-display').textContent = msg.joinUrl;
+
+        const waitingPrivacyBadge = document.getElementById('waiting-privacy-badge');
+        if (waitingPrivacyBadge) {
+          if (msg.isPublic !== false) {
+            waitingPrivacyBadge.innerHTML = '🌐 Sala Pública <span style="font-size:0.75rem; opacity:0.8;">(visível no radar público)</span>';
+            waitingPrivacyBadge.style.background = 'rgba(0, 240, 255, 0.15)';
+            waitingPrivacyBadge.style.color = 'var(--cyan)';
+            waitingPrivacyBadge.style.borderColor = 'var(--cyan)';
+          } else {
+            waitingPrivacyBadge.innerHTML = '🔒 Sala Privada <span style="font-size:0.75rem; opacity:0.8;">(acesso apenas com código/link direto)</span>';
+            waitingPrivacyBadge.style.background = 'rgba(255, 170, 0, 0.15)';
+            waitingPrivacyBadge.style.color = '#ffaa00';
+            waitingPrivacyBadge.style.borderColor = '#ffaa00';
+          }
+        }
+
         showScreen('waitingHost');
         window.tacticalAudio.sonarPing();
+        break;
+
+      case 'public_rooms_updated':
+        renderPublicRooms(msg.rooms);
         break;
 
       case 'room_joined':
@@ -263,9 +284,36 @@
   const btnCreateRoom = document.getElementById('btn-create-room');
   const btnJoinRoom = document.getElementById('btn-join-room');
   const inputRoomCode = document.getElementById('input-room-code');
+  const btnPrivacyPublic = document.getElementById('btn-privacy-public');
+  const btnPrivacyPrivate = document.getElementById('btn-privacy-private');
+  const publicRoomsContainer = document.getElementById('public-rooms-container');
+  const badgePublicRoomsCount = document.getElementById('badge-public-rooms-count');
+  const btnRefreshRooms = document.getElementById('btn-refresh-rooms');
 
   if (state.playerName) {
     inputPlayerName.value = state.playerName;
+  }
+
+  function setRoomPrivacy(isPublic) {
+    state.isPublicRoom = isPublic;
+    if (btnPrivacyPublic && btnPrivacyPrivate) {
+      btnPrivacyPublic.classList.toggle('active', isPublic);
+      btnPrivacyPrivate.classList.toggle('active', !isPublic);
+    }
+  }
+
+  if (btnPrivacyPublic) {
+    btnPrivacyPublic.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      setRoomPrivacy(true);
+    });
+  }
+
+  if (btnPrivacyPrivate) {
+    btnPrivacyPrivate.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      setRoomPrivacy(false);
+    });
   }
 
   btnCreateRoom.addEventListener('click', async () => {
@@ -277,15 +325,16 @@
     sendWS('create_room', {
       playerName: state.playerName,
       friendCode: state.friendCode,
+      isPublic: state.isPublicRoom,
       origin: window.location.origin
     });
   });
 
-  btnJoinRoom.addEventListener('click', async () => {
+  async function joinRoomByCode(code) {
     window.tacticalAudio.click();
     window.tacticalHaptics.click();
-    const code = inputRoomCode.value.trim().toUpperCase();
-    if (!code) {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) {
       showToast('Digite o código da sala!');
       return;
     }
@@ -293,11 +342,98 @@
     localStorage.setItem('naval_player_name', state.playerName);
     await initWebSocket();
     sendWS('join_room', {
-      roomCode: code,
+      roomCode: cleanCode,
       playerName: state.playerName,
       friendCode: state.friendCode
     });
+  }
+
+  btnJoinRoom.addEventListener('click', () => {
+    joinRoomByCode(inputRoomCode.value);
   });
+
+  // --- RADAR DE PARTIDAS PÚBLICAS ---
+  function renderPublicRooms(rooms) {
+    if (!publicRoomsContainer) return;
+    const list = Array.isArray(rooms) ? rooms : [];
+    if (badgePublicRoomsCount) {
+      badgePublicRoomsCount.textContent = list.length;
+    }
+
+    if (list.length === 0) {
+      publicRoomsContainer.innerHTML = `
+        <div class="empty-rooms-msg">
+          <span style="font-size: 1.6rem; display: block; margin-bottom: 6px;">📡</span>
+          Nenhuma batalha pública aberta no momento.<br>
+          <small style="color: var(--text-dim);">Crie uma sala pública acima ou convide um amigo!</small>
+        </div>
+      `;
+      return;
+    }
+
+    publicRoomsContainer.innerHTML = list.map(room => {
+      const hostName = escapeHtml(room.hostName || 'Comandante Anônimo');
+      const code = escapeHtml(room.roomCode);
+      const waitingSec = Math.floor((Date.now() - (room.createdAt || Date.now())) / 1000);
+      let timeText = 'agora mesmo';
+      if (waitingSec >= 60) {
+        timeText = `há ${Math.floor(waitingSec / 60)} min`;
+      } else if (waitingSec > 5) {
+        timeText = `há ${waitingSec}s`;
+      }
+
+      return `
+        <div class="public-room-item" data-code="${code}">
+          <div class="room-info">
+            <div class="room-host">⚓ ${hostName}</div>
+            <div class="room-meta">
+              <span class="room-badge-code">Sala #${code}</span>
+              <span class="room-time">⏱️ ${timeText}</span>
+            </div>
+          </div>
+          <button class="btn-join-public-room btn-tactical-accent" data-code="${code}">
+            Entrar ⚡
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    publicRoomsContainer.querySelectorAll('.btn-join-public-room').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const code = btn.getAttribute('data-code');
+        joinRoomByCode(code);
+      });
+    });
+  }
+
+  async function fetchAndRenderPublicRooms(notify = false) {
+    try {
+      const res = await fetch('/api/rooms/public');
+      const data = await res.json();
+      if (data && Array.isArray(data.rooms)) {
+        renderPublicRooms(data.rooms);
+        if (notify) showToast('📡 Radar de batalhas atualizado!');
+      }
+    } catch (err) {
+      console.warn('Erro ao consultar salas abertas:', err);
+    }
+  }
+
+  if (btnRefreshRooms) {
+    btnRefreshRooms.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      fetchAndRenderPublicRooms(true);
+    });
+  }
+
+  // Consulta inicial e polling leve em segundo plano no Lobby
+  fetchAndRenderPublicRooms();
+  setInterval(() => {
+    if (screens.lobby && screens.lobby.classList.contains('active')) {
+      fetchAndRenderPublicRooms();
+    }
+  }, 8000);
 
   // Share / Copy Link Button
   const btnCopyLink = document.getElementById('btn-copy-link');

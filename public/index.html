@@ -65,12 +65,47 @@
           <input type="text" id="input-player-name" class="input-tactical" placeholder="Ex: Capitão Jack" maxlength="15" value="Comandante">
         </div>
 
+        <div class="privacy-selector-wrapper">
+          <label class="form-label">Tipo de Partida</label>
+          <div class="privacy-toggle-group">
+            <div class="privacy-toggle-card active" id="btn-privacy-public">
+              <span class="privacy-icon">🌐</span>
+              <div class="privacy-text">
+                <strong>Pública</strong>
+                <small>Visível no radar para qualquer jogador</small>
+              </div>
+            </div>
+            <div class="privacy-toggle-card" id="btn-privacy-private">
+              <span class="privacy-icon">🔒</span>
+              <div class="privacy-text">
+                <strong>Privada</strong>
+                <small>Apenas com código direto ou link</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button id="btn-create-room" class="btn-primary">
           <span>📡</span> Criar Nova Sala
         </button>
 
+        <!-- LISTA DE BATALHAS PÚBLICAS EM ABERTO -->
+        <div class="open-rooms-card">
+          <div class="open-rooms-header">
+            <div class="open-rooms-title-box">
+              <span class="radar-live-blip"></span>
+              <strong>Batalhas em Aberto</strong>
+              <span id="badge-public-rooms-count" class="badge-rooms-count">0</span>
+            </div>
+            <button id="btn-refresh-rooms" class="btn-refresh-rooms" title="Atualizar Radar">🔄</button>
+          </div>
+          <div id="public-rooms-container" class="open-rooms-list">
+            <div class="rooms-loading-hint">Buscando partidas no radar tático...</div>
+          </div>
+        </div>
+
         <div class="lobby-divider">
-          <span>OU ENTRE COM CÓDIGO</span>
+          <span>OU ENTRE COM CÓDIGO DIRETO</span>
         </div>
 
         <div class="form-group">
@@ -112,6 +147,7 @@
         <p class="lobby-subtitle">Peça para o 2º jogador apontar a câmera do celular para o QR Code abaixo:</p>
 
         <div class="room-badge" id="display-room-code">----</div>
+        <div id="waiting-privacy-badge" class="waiting-privacy-tag">🌐 Sala Pública (Aguardando no Radar)</div>
 
         <div class="qr-container">
           <img id="qr-img" class="qr-image" src="" alt="QR Code da Sala">
