@@ -163,6 +163,9 @@
         <button id="btn-copy-link" class="btn-secondary">
           <span>📋</span> Copiar Link
         </button>
+        <button id="btn-cancel-waiting-room" class="btn-secondary" style="margin-top: 10px; border-color: rgba(255, 42, 85, 0.35); color: var(--red-danger);">
+          <span>🚪</span> Cancelar Sala
+        </button>
       </div>
     </section>
 
@@ -192,6 +195,9 @@
           <button id="btn-clear-fleet" class="btn-secondary" title="Limpar Grade">🗑️ Limpar</button>
         </div>
         <button id="btn-confirm-fleet" class="btn-primary btn-confirm-full" disabled>⚓ Pronto (0/5)</button>
+        <button id="btn-placement-leave" class="btn-text-link" style="color: var(--text-dim); font-size: 0.78rem; background: none; border: none; cursor: pointer; text-decoration: underline; margin-top: 4px; padding: 6px;">
+          Abandonar Sala
+        </button>
       </div>
     </section>
 
@@ -209,6 +215,7 @@
           <span id="duel-opp-score" class="duel-p-score">0</span>
           <span id="duel-opp-name" class="duel-p-name">Inimigo</span>
           <button id="btn-battle-add-friend" class="btn-micro-friend" title="Adicionar aos amigos" style="display: none;">⭐ +Amigo</button>
+          <button id="btn-battle-surrender" class="btn-micro-surrender" title="Abandonar partida" aria-label="Abandonar partida">🏳️</button>
         </div>
       </div>
       
@@ -297,6 +304,9 @@
         </button>
         <button id="btn-gameover-ranking" class="btn-secondary" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
           🏆 Ver Ranking Geral
+        </button>
+        <button id="btn-gameover-lobby" class="btn-secondary" style="border-color: rgba(0, 240, 255, 0.35);">
+          <span>🏠</span> Voltar ao Lobby
         </button>
       </div>
     </div>
@@ -433,6 +443,26 @@
       <div class="install-push-footer">
         <button id="btn-dismiss-install-push" class="btn-dismiss-prompt">
           Continuar no navegador
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Confirmação de Abandono de Jogo (Anti-Saída Acidental) -->
+  <div id="modal-confirm-leave" class="modal-overlay">
+    <div class="modal-card modal-confirm-leave-card">
+      <div class="confirm-leave-icon">⚠️</div>
+      <h2 id="confirm-leave-title" class="modal-title" style="color: var(--orange-warn); font-size: 1.3rem;">Abandonar Batalha?</h2>
+      <p id="confirm-leave-desc" class="lobby-subtitle" style="margin-top: 8px; margin-bottom: 22px;">
+        Uma partida está em andamento. Se você sair ou voltar agora, a vitória será do adversário.
+      </p>
+      
+      <div class="confirm-leave-actions" style="display: flex; flex-direction: column; gap: 10px;">
+        <button id="btn-stay-game" class="btn-primary btn-stay-tactical">
+          ⚓ Continuar Jogando
+        </button>
+        <button id="btn-confirm-leave" class="btn-secondary btn-danger-leave">
+          🚪 Abandonar Partida
         </button>
       </div>
     </div>

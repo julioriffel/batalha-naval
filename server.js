@@ -1110,6 +1110,83 @@ wss.on('connection', ws => {
         return;
       }
 
+      // 6. ABANDONAR / RENDER-SE DA BATALHA
+      if (type === 'surrender') {
+        const room = rooms.get(currentRoomCode);
+        if (!room || room.state !== 'battle') return;
+
+        const forfeiter = room.players.find(p => p.id === currentPlayerId);
+        const winner = room.players.find(p => p.id !== currentPlayerId);
+        if (!forfeiter || !winner) return;
+
+        room.state = 'gameover';
+        if (!room.scores) {
+          room.scores = { [winner.id]: 0, [forfeiter.id]: 0 };
+        }
+        room.scores[winner.id] = (room.scores[winner.id] || 0) + 1;
+
+        recordMatchResult(
+          winner.name,
+          forfeiter.name,
+          winner.shotsFired,
+          winner.hitsLanded,
+          forfeiter.shotsFired,
+          forfeiter.hitsLanded
+        );
+
+        const currentLeaderboard = getSortedLeaderboard();
+
+        // Notificar o vencedor da desistência
+        send(winner.ws, 'game_over', {
+          isWinner: true,
+          winnerName: winner.name,
+          forfeit: true,
+          message: `${forfeiter.name} abandonou a batalha!`,
+          shotsFired: winner.shotsFired,
+          hitsLanded: winner.hitsLanded,
+          accuracy: winner.shotsFired > 0 ? Math.round((winner.hitsLanded / winner.shotsFired) * 100) : 0,
+          opponentFleet: forfeiter.ships,
+          opponentFriendCode: forfeiter.friendCode,
+          sessionScore: {
+            myWins: room.scores[winner.id],
+            opponentWins: room.scores[forfeiter.id] || 0,
+            opponentName: forfeiter.name
+          },
+          leaderboard: currentLeaderboard
+        });
+
+        send(ws, 'surrender_acknowledged', {
+          message: 'Você abandonou a batalha.'
+        });
+        return;
+      }
+
+      // 7. SAIR DA SALA VOLUNTARIAMENTE (PLACEMENT OU WAITING)
+      if (type === 'leave_room') {
+        const room = rooms.get(currentRoomCode);
+        if (!room) return;
+
+        const wasPublic = room.isPublic;
+        const remaining = room.players.filter(p => p.id !== currentPlayerId);
+        if (remaining.length === 0) {
+          rooms.delete(currentRoomCode);
+          if (wasPublic) broadcastPublicRooms();
+        } else {
+          room.players = remaining;
+          room.state = 'waiting';
+          if (wasPublic) broadcastPublicRooms();
+          const opponent = remaining[0];
+          if (opponent && opponent.ws) {
+            send(opponent.ws, 'opponent_left', {
+              message: 'O comandante adversário saiu da sala.'
+            });
+          }
+        }
+        currentRoomCode = null;
+        send(ws, 'left_room_success');
+        return;
+      }
+
     } catch (err) {
       console.error('Erro processando mensagem WebSocket:', err);
       send(ws, 'error', { message: 'Comando inválido recebido pelo radar.' });

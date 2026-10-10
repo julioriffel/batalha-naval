@@ -297,6 +297,32 @@ async function runTest() {
   ws1.send(JSON.stringify({ type: 'get_leaderboard' }));
   await wsLeaderboardReceived;
 
+  // 7. Testar desistência / abandono da partida (surrender)
+  const surrenderTest = Promise.all([
+    new Promise((resolve) => {
+      // Oponente do atirador deve receber game_over com vitória por desistência
+      victimWs.on('message', m => {
+        const d = JSON.parse(m.toString());
+        if (d.type === 'game_over' && d.forfeit) {
+          console.log('✅ Desistência (surrender): adversário recebeu game_over com vitória!');
+          resolve();
+        }
+      });
+    }),
+    new Promise((resolve) => {
+      // O jogador que desistiu deve receber surrender_acknowledged
+      shooterWs.on('message', m => {
+        const d = JSON.parse(m.toString());
+        if (d.type === 'surrender_acknowledged') {
+          console.log('✅ Desistência (surrender): confirmada com sucesso para o desistente!');
+          resolve();
+        }
+      });
+    })
+  ]);
+  shooterWs.send(JSON.stringify({ type: 'surrender' }));
+  await surrenderTest;
+
   ws1.close();
   ws2.close();
 

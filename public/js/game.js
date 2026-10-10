@@ -81,6 +81,10 @@
     if (hudTurnBanner) {
       hudTurnBanner.style.display = (screenName === 'battle') ? 'flex' : 'none';
     }
+
+    if (screenName === 'placement' || screenName === 'battle') {
+      window.history.pushState({ screen: screenName, navalInGame: true }, '', window.location.href);
+    }
   }
 
   // --- Sound & Audio Control ---
@@ -276,6 +280,21 @@
         showToast(msg.message, 5000);
         hudTurnBanner.textContent = '⚠️ ADVERSÁRIO DESCONECTOU';
         hudTurnBanner.className = 'turn-banner alert-danger';
+        break;
+
+      case 'surrender_acknowledged':
+        showToast('Você abandonou a partida.');
+        resetMatchToLobby();
+        break;
+
+      case 'opponent_left':
+        showToast(msg.message || 'O adversário saiu da sala.', 5000);
+        hudTurnBanner.textContent = '⚠️ ADVERSÁRIO SAIU';
+        hudTurnBanner.className = 'turn-banner alert-danger';
+        break;
+
+      case 'left_room_success':
+        resetMatchToLobby();
         break;
 
       case 'error':
@@ -1785,5 +1804,187 @@
       }
     }
   }, 2200);
+
+  // =========================================================================
+  // --- PROTEÇÃO ANTI-FECHAMENTO E ANTI-VOLTA (PARTIDA EM ANDAMENTO) ---
+  // =========================================================================
+
+  function isGameInProgress() {
+    const isPlacement = screens.placement && screens.placement.classList.contains('active');
+    const isBattle = screens.battle && screens.battle.classList.contains('active');
+    const isGameOver = modalGameOver && modalGameOver.classList.contains('active');
+    return Boolean(state.roomCode && (isPlacement || isBattle) && !isGameOver);
+  }
+
+  function resetMatchToLobby() {
+    state.roomCode = null;
+    state.placement.ships = [];
+    state.battle.attackGrid = Array.from({ length: 10 }, () => Array(10).fill(null));
+    state.battle.defenseGrid = Array.from({ length: 10 }, () => Array(10).fill(null));
+    state.battle.enemySunkCount = 0;
+    state.battle.mySunkCount = 0;
+    state.battle.isMyTurn = false;
+
+    if (modalGameOver) modalGameOver.classList.remove('active');
+    if (modalConfirmLeave) modalConfirmLeave.classList.remove('active');
+
+    if (window.location.search) {
+      window.history.replaceState({ screen: 'lobby', navalInGame: false }, '', window.location.pathname);
+    } else {
+      window.history.replaceState({ screen: 'lobby', navalInGame: false }, '', window.location.href);
+    }
+
+    showScreen('lobby');
+    fetchAndRenderPublicRooms();
+  }
+
+  // 1. IMPEDIR FECHAMENTO / RECARREGAMENTO ACIDENTAL DA ABA (BEFOREUNLOAD)
+  window.addEventListener('beforeunload', (event) => {
+    if (isGameInProgress()) {
+      event.preventDefault();
+      event.returnValue = '';
+      return '';
+    }
+  });
+
+  // 2. MODAL DE CONFIRMAÇÃO DE ABANDONO DE PARTIDA
+  const modalConfirmLeave = document.getElementById('modal-confirm-leave');
+  const confirmLeaveTitle = document.getElementById('confirm-leave-title');
+  const confirmLeaveDesc = document.getElementById('confirm-leave-desc');
+  const btnStayGame = document.getElementById('btn-stay-game');
+  const btnConfirmLeave = document.getElementById('btn-confirm-leave');
+  const btnBattleSurrender = document.getElementById('btn-battle-surrender');
+  const btnPlacementLeave = document.getElementById('btn-placement-leave');
+  const btnCancelWaitingRoom = document.getElementById('btn-cancel-waiting-room');
+  const btnGameOverLobby = document.getElementById('btn-gameover-lobby');
+
+  function openConfirmLeaveModal() {
+    if (!modalConfirmLeave) return;
+    const isBattle = screens.battle && screens.battle.classList.contains('active');
+
+    if (isBattle) {
+      if (confirmLeaveTitle) confirmLeaveTitle.textContent = 'Abandonar Batalha?';
+      if (confirmLeaveDesc) confirmLeaveDesc.textContent = 'Uma batalha naval está em andamento. Se você sair ou voltar agora, a vitória será computada para o adversário por abandono!';
+      if (btnStayGame) btnStayGame.textContent = '⚓ Continuar Jogando';
+      if (btnConfirmLeave) btnConfirmLeave.textContent = '🚪 Abandonar Partida';
+    } else {
+      if (confirmLeaveTitle) confirmLeaveTitle.textContent = 'Cancelar Partida?';
+      if (confirmLeaveDesc) confirmLeaveDesc.textContent = 'Você está posicionando sua frota. Se você sair ou voltar agora, a sala será desfeita.';
+      if (btnStayGame) btnStayGame.textContent = '⚓ Continuar Posicionando';
+      if (btnConfirmLeave) btnConfirmLeave.textContent = '🚪 Sair da Sala';
+    }
+
+    window.tacticalAudio.click();
+    window.tacticalHaptics.click();
+    modalConfirmLeave.classList.add('active');
+  }
+
+  function closeConfirmLeaveModal() {
+    if (modalConfirmLeave) modalConfirmLeave.classList.remove('active');
+  }
+
+  if (btnStayGame) {
+    btnStayGame.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      window.tacticalHaptics.click();
+      closeConfirmLeaveModal();
+    });
+  }
+
+  if (btnConfirmLeave) {
+    btnConfirmLeave.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      window.tacticalHaptics.click();
+      closeConfirmLeaveModal();
+
+      if (screens.battle && screens.battle.classList.contains('active')) {
+        sendWS('surrender');
+        resetMatchToLobby();
+      } else {
+        sendWS('leave_room', { playerName: state.playerName });
+        resetMatchToLobby();
+      }
+    });
+  }
+
+  if (modalConfirmLeave) {
+    modalConfirmLeave.addEventListener('click', (e) => {
+      if (e.target === modalConfirmLeave) {
+        closeConfirmLeaveModal();
+      }
+    });
+  }
+
+  if (btnBattleSurrender) {
+    btnBattleSurrender.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openConfirmLeaveModal();
+    });
+  }
+
+  if (btnPlacementLeave) {
+    btnPlacementLeave.addEventListener('click', () => {
+      openConfirmLeaveModal();
+    });
+  }
+
+  if (btnCancelWaitingRoom) {
+    btnCancelWaitingRoom.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      sendWS('leave_room', { playerName: state.playerName });
+      resetMatchToLobby();
+    });
+  }
+
+  if (btnGameOverLobby) {
+    btnGameOverLobby.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      sendWS('leave_room', { playerName: state.playerName });
+      resetMatchToLobby();
+    });
+  }
+
+  // 3. IMPEDIR GESTO DE VOLTAR / BOTÃO VOLTAR DO CELULAR (POPSTATE)
+  if (!window.history.state) {
+    window.history.replaceState({ screen: 'lobby', navalInGame: false }, '', window.location.href);
+  }
+
+  window.addEventListener('popstate', (event) => {
+    // A. Se houver modal aberto de consulta (amigos, ranking, prompt pwa, ou confirmação), fecha primeiro o modal
+    const openModals = [modalFriends, modalRanking, modalInstallPush, modalIosInstall, modalConfirmLeave];
+    let modalClosed = false;
+    for (const m of openModals) {
+      if (m && m.classList.contains('active')) {
+        m.classList.remove('active');
+        modalClosed = true;
+      }
+    }
+    if (modalClosed) {
+      if (isGameInProgress()) {
+        window.history.pushState({ navalInGame: true }, '', window.location.href);
+      }
+      return;
+    }
+
+    // B. Se estiver no meio de um jogo ativo (posicionamento ou combate), bloqueia voltar e abre modal de confirmação
+    if (isGameInProgress()) {
+      window.history.pushState({ navalInGame: true }, '', window.location.href);
+      openConfirmLeaveModal();
+      return;
+    }
+
+    // C. Se estiver aguardando oponente como Host e apertar voltar, cancela a sala e volta suave ao lobby
+    if (screens.waitingHost && screens.waitingHost.classList.contains('active')) {
+      sendWS('leave_room', { playerName: state.playerName });
+      resetMatchToLobby();
+      return;
+    }
+
+    // D. Se estiver na tela de fim de jogo e apertar voltar, vai para o lobby
+    if (modalGameOver && modalGameOver.classList.contains('active')) {
+      modalGameOver.classList.remove('active');
+      resetMatchToLobby();
+    }
+  });
 
 })();
