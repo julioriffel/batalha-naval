@@ -493,16 +493,79 @@
     switchBattleTab('attack');
   }
 
-  function updateTurnDisplay(isMyTurn, activePlayerName) {
+  let splashTimeout = null;
+  function showTurnSplash(type, title, desc, icon) {
+    const overlay = document.getElementById('turn-splash-overlay');
+    const card = document.getElementById('turn-splash-card');
+    const iconEl = document.getElementById('turn-splash-icon');
+    const titleEl = document.getElementById('turn-splash-title');
+    const descEl = document.getElementById('turn-splash-desc');
+
+    if (!overlay || !card) return;
+
+    clearTimeout(splashTimeout);
+
+    card.className = `turn-splash-card ${type}`;
+    if (iconEl) iconEl.textContent = icon;
+    if (titleEl) titleEl.textContent = title;
+    if (descEl) descEl.textContent = desc;
+
+    overlay.classList.add('show');
+
+    splashTimeout = setTimeout(() => {
+      overlay.classList.remove('show');
+    }, 1800);
+  }
+
+  function updateTurnDisplay(isMyTurn, activePlayerName, isExtraTurn = false) {
     state.battle.isMyTurn = isMyTurn;
+    const titleEl = document.getElementById('turn-banner-main');
+    const subEl = document.getElementById('turn-banner-sub');
+    const radarBadge = document.getElementById('radar-status-badge');
+    const attackRadarCard = document.getElementById('card-attack-radar');
+
     if (isMyTurn) {
-      hudTurnBanner.innerHTML = '🎯 <strong>SUA VEZ DE ATACAR!</strong> Selecione um alvo no radar.';
-      hudTurnBanner.className = 'turn-banner your-turn';
-      window.tacticalHaptics.yourTurn();
+      if (isExtraTurn) {
+        hudTurnBanner.className = 'turn-banner extra-turn';
+        if (titleEl) titleEl.textContent = '💥 TIRO EXTRA CONCEDIDO!';
+        if (subEl) subEl.textContent = 'Você acertou o navio! Toque no radar para atirar novamente.';
+        showTurnSplash('extra', 'TIRO EXTRA!', 'Alvo atingido! Você ganhou mais um disparo.', '💥');
+        window.tacticalAudio.extraShotSound();
+        window.tacticalHaptics.extraTurn();
+      } else {
+        hudTurnBanner.className = 'turn-banner your-turn';
+        if (titleEl) titleEl.textContent = '🟢 SUA VEZ DE ATACAR!';
+        if (subEl) subEl.textContent = 'Disparo autorizado — toque nas coordenadas do radar inimigo.';
+        showTurnSplash('', 'SUA VEZ DE ATACAR!', 'Disparo de míssil autorizado! Escolha seu alvo no radar.', '⚡');
+        window.tacticalAudio.turnAlertSound();
+        window.tacticalHaptics.yourTurn();
+      }
+
+      if (radarBadge) {
+        radarBadge.textContent = '🟢 DISPARO AUTORIZADO';
+        radarBadge.className = 'radar-status-badge badge-active';
+      }
+      if (attackRadarCard) {
+        attackRadarCard.classList.add('radar-active');
+        attackRadarCard.classList.remove('radar-locked');
+      }
+
       switchBattleTab('attack');
     } else {
-      hudTurnBanner.innerHTML = `⏳ Vez de <strong>${activePlayerName}</strong>. Aguarde o ataque adversário...`;
       hudTurnBanner.className = 'turn-banner opponent-turn';
+      if (titleEl) titleEl.textContent = `⏳ TURNO DE ${activePlayerName.toUpperCase()}`;
+      if (subEl) subEl.textContent = 'Aguarde o disparo do adversário...';
+
+      if (radarBadge) {
+        radarBadge.textContent = '🔒 RADAR TRAVADO';
+        radarBadge.className = 'radar-status-badge badge-locked';
+      }
+      if (attackRadarCard) {
+        attackRadarCard.classList.remove('radar-active');
+        attackRadarCard.classList.add('radar-locked');
+      }
+
+      showTurnSplash('opponent', `TURNO DO INIMIGO`, `Aguardando coordenadas de disparo de ${activePlayerName}...`, '⏳');
     }
   }
 
@@ -524,7 +587,8 @@
 
   function onAttackCellClick(row, col) {
     if (!state.battle.isMyTurn) {
-      showToast('Aguarde sua vez de jogar!');
+      window.tacticalHaptics.miss();
+      showToast('🔒 RADAR TRAVADO: Aguarde a sua vez de jogar!', 2500);
       return;
     }
 
@@ -600,7 +664,8 @@
       }
     }
 
-    updateTurnDisplay(isYourTurn, activePlayerName);
+    const isExtraTurn = isHit && isYourTurn && role === 'attacker';
+    updateTurnDisplay(isYourTurn, activePlayerName, isExtraTurn);
   }
 
   function markShipSunk(gridEl, coords) {

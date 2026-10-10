@@ -282,6 +282,62 @@ class TacticalAudio {
     osc.start(t);
     osc.stop(t + 0.04);
   }
+
+  // 9. Alerta sonoro de "Sua Vez de Jogar"
+  turnAlertSound() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const freqs = [587.33, 880, 1174.66]; // D5, A5, D6 - arpeggio tático triunfante
+
+    freqs.forEach((freq, idx) => {
+      const startT = t + idx * 0.08;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, startT);
+
+      gain.gain.setValueAtTime(0.25, startT);
+      gain.gain.exponentialRampToValueAtTime(0.001, startT + 0.35);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(startT);
+      osc.stop(startT + 0.36);
+    });
+  }
+
+  // 10. Tiro Extra ("Acertou joga de novo!")
+  extraShotSound() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const notes = [659.25, 987.77]; // E5, B5
+
+    notes.forEach((freq, idx) => {
+      const startT = t + idx * 0.09;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startT);
+
+      gain.gain.setValueAtTime(0.22, startT);
+      gain.gain.exponentialRampToValueAtTime(0.001, startT + 0.28);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(startT);
+      osc.stop(startT + 0.3);
+    });
+  }
 }
 
 window.tacticalAudio = new TacticalAudio();

@@ -115,41 +115,252 @@ body {
   box-shadow: var(--cyan-glow);
 }
 
-/* --- Status Alert Banner --- */
+/* --- Status Alert Banner (HUD Superior Aprimorado) --- */
 .turn-banner {
-  padding: 10px 16px;
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  padding: 12px 18px;
   background: var(--bg-surface);
-  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+  border-bottom: 2px solid rgba(0, 240, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  z-index: 40;
+}
+
+.turn-indicator-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+  flex-shrink: 0;
   transition: all 0.3s;
 }
 
-.turn-banner.your-turn {
-  background: rgba(0, 255, 170, 0.15);
-  border-bottom-color: var(--green-tactical);
-  color: var(--green-tactical);
-  text-shadow: 0 0 8px rgba(0, 255, 170, 0.5);
-  animation: pulse-border 2s infinite;
+.turn-banner-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
+.turn-banner-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-highlight);
+  transition: all 0.3s;
+}
+
+.turn-banner-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  margin-top: 2px;
+  transition: all 0.3s;
+}
+
+/* Quando for a vez do jogador: Verde neon vivo e destaque máximo */
+.turn-banner.your-turn {
+  background: linear-gradient(90deg, rgba(0, 255, 170, 0.18), rgba(0, 240, 255, 0.22), rgba(0, 255, 170, 0.18));
+  border-bottom: 2px solid var(--green-tactical);
+  box-shadow: 0 4px 20px rgba(0, 255, 170, 0.3);
+}
+
+.turn-banner.your-turn .turn-indicator-dot {
+  background: var(--green-tactical);
+  box-shadow: 0 0 14px var(--green-tactical);
+  animation: pulse-green 1.2s infinite;
+}
+
+.turn-banner.your-turn .turn-banner-title {
+  color: #00ffaa;
+  text-shadow: 0 0 12px rgba(0, 255, 170, 0.7);
+}
+
+.turn-banner.your-turn .turn-banner-subtitle {
+  color: #a7ffd9;
+}
+
+/* Quando for a vez do oponente: Âmbar/Laranja de espera */
 .turn-banner.opponent-turn {
-  background: rgba(255, 153, 0, 0.12);
-  border-bottom-color: var(--orange-warn);
+  background: linear-gradient(90deg, rgba(255, 153, 0, 0.14), rgba(255, 80, 0, 0.14));
+  border-bottom: 2px solid var(--orange-warn);
+  box-shadow: 0 4px 15px rgba(255, 153, 0, 0.2);
+}
+
+.turn-banner.opponent-turn .turn-indicator-dot {
+  background: var(--orange-warn);
+  box-shadow: 0 0 10px var(--orange-warn);
+  animation: pulse-orange 1.8s infinite;
+}
+
+.turn-banner.opponent-turn .turn-banner-title {
   color: var(--orange-warn);
 }
 
+.turn-banner.opponent-turn .turn-banner-subtitle {
+  color: #ffc97a;
+}
+
+/* Tiro extra (Acertou joga de novo) */
+.turn-banner.extra-turn {
+  background: linear-gradient(90deg, rgba(255, 0, 85, 0.3), rgba(255, 170, 0, 0.3));
+  border-bottom: 2px solid #ff2a55;
+  box-shadow: 0 4px 25px rgba(255, 42, 85, 0.5);
+  animation: flash-red 0.8s infinite alternate;
+}
+
+.turn-banner.extra-turn .turn-indicator-dot {
+  background: #ff2a55;
+  box-shadow: 0 0 15px #ff2a55;
+}
+
+.turn-banner.extra-turn .turn-banner-title {
+  color: #ffffff;
+  text-shadow: 0 0 15px #ff2a55;
+}
+
+/* Alerta de dano / desconexão */
 .turn-banner.alert-danger {
-  background: rgba(255, 42, 85, 0.2);
+  background: rgba(255, 42, 85, 0.25);
   border-bottom-color: var(--red-danger);
-  color: var(--red-danger);
   animation: flash-red 1s infinite alternate;
+}
+
+.turn-banner.alert-danger .turn-banner-title {
+  color: var(--red-danger);
+}
+
+/* --- Turn Splash Overlay (Anúncio Cinematográfico Central) --- */
+.turn-splash-overlay {
+  position: fixed;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 90%;
+  max-width: 360px;
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.turn-splash-overlay.show {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+.turn-splash-card {
+  background: rgba(5, 12, 25, 0.96);
+  backdrop-filter: blur(12px);
+  border: 2px solid var(--green-tactical);
+  border-radius: var(--radius-lg);
+  padding: 22px 20px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(0, 255, 170, 0.55), inset 0 0 20px rgba(0, 255, 170, 0.15);
+  width: 100%;
+}
+
+.turn-splash-card.opponent {
+  border-color: var(--orange-warn);
+  box-shadow: 0 0 40px rgba(255, 153, 0, 0.45), inset 0 0 20px rgba(255, 153, 0, 0.12);
+}
+
+.turn-splash-card.extra {
+  border-color: #ff2a55;
+  box-shadow: 0 0 45px rgba(255, 42, 85, 0.6), inset 0 0 20px rgba(255, 42, 85, 0.2);
+}
+
+.turn-splash-icon {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+.turn-splash-title {
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.turn-splash-card:not(.opponent):not(.extra) .turn-splash-title {
+  color: var(--green-tactical);
+  text-shadow: 0 0 14px rgba(0, 255, 170, 0.7);
+}
+
+.turn-splash-card.opponent .turn-splash-title {
+  color: var(--orange-warn);
+  text-shadow: 0 0 14px rgba(255, 153, 0, 0.7);
+}
+
+.turn-splash-card.extra .turn-splash-title {
+  color: #ff5e7e;
+  text-shadow: 0 0 15px rgba(255, 42, 85, 0.8);
+}
+
+.turn-splash-desc {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+
+/* Badge de status no topo do Radar de Ataque */
+.radar-status-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+
+.radar-status-badge.badge-active {
+  background: rgba(0, 255, 170, 0.2);
+  border: 1px solid var(--green-tactical);
+  color: var(--green-tactical);
+  box-shadow: 0 0 8px rgba(0, 255, 170, 0.4);
+}
+
+.radar-status-badge.badge-locked {
+  background: rgba(255, 153, 0, 0.2);
+  border: 1px solid var(--orange-warn);
+  color: var(--orange-warn);
+}
+
+/* Estados interativos do Card do Radar */
+.tactical-board-card.radar-active {
+  border-color: var(--cyan);
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+}
+
+.tactical-board-card.radar-locked {
+  opacity: 0.85;
+}
+
+.tactical-board-card.radar-locked .grid-cell {
+  cursor: not-allowed;
+}
+
+@keyframes pulse-green {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+@keyframes pulse-orange {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.6; }
 }
 
 /* --- Main Container --- */

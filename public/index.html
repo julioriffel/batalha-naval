@@ -23,9 +23,22 @@
     </div>
   </header>
 
-  <!-- Turn & Battle Status Banner -->
+  <!-- Turn & Battle Status Banner (HUD Fixo e Destacado) -->
   <div id="hud-turn-banner" class="turn-banner">
-    ⚓ Central de Comando Pronta
+    <div class="turn-indicator-dot"></div>
+    <div class="turn-banner-content">
+      <div id="turn-banner-main" class="turn-banner-title">⚓ Central de Comando Pronta</div>
+      <div id="turn-banner-sub" class="turn-banner-subtitle">Aguardando início das operações táticas</div>
+    </div>
+  </div>
+
+  <!-- Turn Announcement Splash (Overlay Animado na Troca de Turno) -->
+  <div id="turn-splash-overlay" class="turn-splash-overlay">
+    <div id="turn-splash-card" class="turn-splash-card">
+      <div id="turn-splash-icon" class="turn-splash-icon">⚡</div>
+      <div id="turn-splash-title" class="turn-splash-title">SUA VEZ DE ATACAR!</div>
+      <div id="turn-splash-desc" class="turn-splash-desc">Toque nas coordenadas do radar inimigo</div>
+    </div>
   </div>
 
   <!-- Main View Area -->
@@ -148,8 +161,8 @@
         <!-- ATTACK RADAR -->
         <div id="card-attack-radar" class="tactical-board-card radar-sweep">
           <div class="board-label-bar">
-            <span class="board-label">🎯 Radar de Ataque (Inimigo)</span>
-            <span class="board-subtext">Toque para atirar míssil</span>
+            <span class="board-label">🎯 Radar de Ataque</span>
+            <span id="radar-status-badge" class="radar-status-badge badge-active">🟢 SUA VEZ</span>
           </div>
           <div id="attack-grid" class="grid-container"></div>
         </div>

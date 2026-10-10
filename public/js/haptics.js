@@ -42,9 +42,14 @@ class TacticalHaptics {
     this.vibrate([150, 70, 200, 70, 300]);
   }
 
-  // Sua vez de jogar
+  // Sua vez de jogar (Vibração dupla firme e inconfundível)
   yourTurn() {
-    this.vibrate([50, 50, 50]);
+    this.vibrate([120, 70, 180]);
+  }
+
+  // Tiro extra por acerto
+  extraTurn() {
+    this.vibrate([70, 40, 70, 40, 140]);
   }
 
   // Vitória
