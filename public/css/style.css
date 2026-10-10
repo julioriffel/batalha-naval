@@ -2123,6 +2123,7 @@ body {
   justify-content: space-between;
   gap: 8px;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .public-room-item:hover {

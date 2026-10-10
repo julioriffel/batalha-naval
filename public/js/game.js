@@ -109,36 +109,61 @@
   updateMuteButton();
 
   // --- WebSocket Setup ---
+  let wsConnectingPromise = null;
+
   function initWebSocket() {
-    return new Promise((resolve, reject) => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}`;
-      const ws = new WebSocket(wsUrl);
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+      return Promise.resolve(state.ws);
+    }
+    if (wsConnectingPromise && state.ws && state.ws.readyState === WebSocket.CONNECTING) {
+      return wsConnectingPromise;
+    }
 
-      ws.onopen = () => {
+    wsConnectingPromise = new Promise((resolve, reject) => {
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}`;
+        const ws = new WebSocket(wsUrl);
         state.ws = ws;
-        resolve(ws);
-      };
 
-      ws.onerror = (err) => {
-        console.error('Erro de conexão WebSocket:', err);
-        showToast('Erro conectando ao radar naval.');
+        ws.onopen = () => {
+          wsConnectingPromise = null;
+          sendWS('get_public_rooms');
+          resolve(ws);
+        };
+
+        ws.onerror = (err) => {
+          wsConnectingPromise = null;
+          console.warn('Conexão WebSocket:', err);
+          if (screens.battle && screens.battle.classList.contains('active')) {
+            showToast('Instabilidade na conexão do radar.');
+          }
+          reject(err);
+        };
+
+        ws.onclose = () => {
+          wsConnectingPromise = null;
+          state.ws = null;
+          if (screens.battle && screens.battle.classList.contains('active')) {
+            showToast('Desconectado do servidor naval.');
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            handleServerMessage(data);
+          } catch (e) {
+            console.error('Erro decodificando mensagem:', e);
+          }
+        };
+      } catch (err) {
+        wsConnectingPromise = null;
         reject(err);
-      };
-
-      ws.onclose = () => {
-        showToast('Desconectado do servidor naval.');
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          handleServerMessage(data);
-        } catch (e) {
-          console.error('Erro decodificando mensagem:', e);
-        }
-      };
+      }
     });
+
+    return wsConnectingPromise;
   }
 
   function sendWS(type, payload = {}) {
@@ -163,12 +188,12 @@
         const waitingPrivacyBadge = document.getElementById('waiting-privacy-badge');
         if (waitingPrivacyBadge) {
           if (msg.isPublic !== false) {
-            waitingPrivacyBadge.textContent = 'Sala Pública';
+            waitingPrivacyBadge.textContent = 'Sala Pública • Aberta no radar';
             waitingPrivacyBadge.style.background = 'rgba(0, 240, 255, 0.15)';
             waitingPrivacyBadge.style.color = 'var(--cyan)';
             waitingPrivacyBadge.style.borderColor = 'var(--cyan)';
           } else {
-            waitingPrivacyBadge.textContent = 'Sala Privada';
+            waitingPrivacyBadge.textContent = 'Sala Privada • Oculta do radar';
             waitingPrivacyBadge.style.background = 'rgba(255, 170, 0, 0.15)';
             waitingPrivacyBadge.style.color = '#ffaa00';
             waitingPrivacyBadge.style.borderColor = '#ffaa00';
@@ -383,7 +408,7 @@
 
     if (list.length === 0) {
       publicRoomsContainer.innerHTML = `
-        <div class="empty-rooms-msg">
+        <div class="open-rooms-empty">
           Nenhuma sala aberta no momento.
         </div>
       `;
@@ -393,7 +418,8 @@
     publicRoomsContainer.innerHTML = list.map(room => {
       const hostName = escapeHtml(room.hostName || 'Comandante');
       const code = escapeHtml(room.roomCode);
-      const waitingSec = Math.floor((Date.now() - (room.createdAt || Date.now())) / 1000);
+      const createdTime = typeof room.createdAt === 'number' ? room.createdAt : (room.createdAt ? new Date(room.createdAt).getTime() : Date.now());
+      const waitingSec = Math.max(0, Math.floor((Date.now() - createdTime) / 1000));
       let timeText = 'agora';
       if (waitingSec >= 60) {
         timeText = `${Math.floor(waitingSec / 60)}m atrás`;
@@ -402,12 +428,12 @@
       }
 
       return `
-        <div class="public-room-item" data-code="${code}">
-          <div class="room-info">
-            <div class="room-host">${hostName}</div>
-            <div class="room-meta">
-              <span class="room-badge-code">#${code}</span>
-              <span class="room-time">${timeText}</span>
+        <div class="public-room-item" data-code="${code}" title="Toque para entrar na batalha">
+          <div class="public-room-info">
+            <div class="public-room-host">${hostName}</div>
+            <div class="public-room-meta">
+              <span class="room-tag-pill">#${code}</span>
+              <span class="room-time-ago">${timeText}</span>
             </div>
           </div>
           <button class="btn-join-public-room btn-tactical-accent" data-code="${code}">
@@ -417,10 +443,9 @@
       `;
     }).join('');
 
-    publicRoomsContainer.querySelectorAll('.btn-join-public-room').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const code = btn.getAttribute('data-code');
+    publicRoomsContainer.querySelectorAll('.public-room-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const code = item.getAttribute('data-code');
         joinRoomByCode(code);
       });
     });
@@ -428,7 +453,13 @@
 
   async function fetchAndRenderPublicRooms(notify = false) {
     try {
-      const res = await fetch('/api/rooms/public');
+      const res = await fetch(`/api/rooms/public?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await res.json();
       if (data && Array.isArray(data.rooms)) {
         renderPublicRooms(data.rooms);
@@ -443,16 +474,38 @@
     btnRefreshRooms.addEventListener('click', () => {
       window.tacticalAudio.click();
       fetchAndRenderPublicRooms(true);
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        sendWS('get_public_rooms');
+      } else {
+        initWebSocket().catch(() => {});
+      }
     });
   }
 
-  // Consulta inicial e polling leve em segundo plano no Lobby
+  // Consulta inicial e conexão WebSocket imediata para receber atualizações do radar em tempo real
   fetchAndRenderPublicRooms();
+  initWebSocket().catch(() => {});
+
+  // Polling como redundância a cada 4 segundos no Lobby
   setInterval(() => {
     if (screens.lobby && screens.lobby.classList.contains('active')) {
       fetchAndRenderPublicRooms();
     }
-  }, 8000);
+  }, 4000);
+
+  // Sincroniza imediatamente quando a aba volta a ficar visível
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (screens.lobby && screens.lobby.classList.contains('active')) {
+        fetchAndRenderPublicRooms();
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          sendWS('get_public_rooms');
+        } else {
+          initWebSocket().catch(() => {});
+        }
+      }
+    }
+  });
 
   // Share / Copy Link Button
   const btnCopyLink = document.getElementById('btn-copy-link');

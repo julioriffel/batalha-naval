@@ -122,6 +122,9 @@ const server = http.createServer(async (req, res) => {
   const sendJson = (statusCode, data) => {
     res.writeHead(statusCode, {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type'
@@ -600,14 +603,16 @@ function generateRoomCode() {
 function getPublicWaitingRooms() {
   const list = [];
   for (const [code, room] of rooms.entries()) {
-    if (room.isPublic && room.state === 'waiting' && room.players.length === 1) {
+    if (room.isPublic && room.state === 'waiting' && Array.isArray(room.players) && room.players.length === 1) {
       const host = room.players[0];
-      list.push({
-        roomCode: code,
-        hostName: host.name,
-        hostFriendCode: host.friendCode || null,
-        createdAt: room.createdAt || new Date().toISOString()
-      });
+      if (host && (!host.ws || host.ws.readyState === WebSocket.OPEN)) {
+        list.push({
+          roomCode: code,
+          hostName: host.name,
+          hostFriendCode: host.friendCode || null,
+          createdAt: typeof room.createdAt === 'number' ? room.createdAt : (room.createdAt ? new Date(room.createdAt).getTime() : Date.now())
+        });
+      }
     }
   }
   return list;
@@ -706,6 +711,11 @@ wss.on('connection', ws => {
   ws.friendCode = null;
   ws.on('pong', () => { ws.isAlive = true; });
 
+  // Envia lista atualizada de salas abertas imediatamente ao conectar
+  send(ws, 'public_rooms_updated', {
+    rooms: getPublicWaitingRooms()
+  });
+
   let currentPlayerId = null;
   let currentRoomCode = null;
 
@@ -754,7 +764,7 @@ wss.on('connection', ws => {
         const room = {
           code: roomCode,
           isPublic,
-          createdAt: new Date().toISOString(),
+          createdAt: Date.now(),
           state: 'waiting', // waiting -> placement -> battle -> gameover
           scores: { [playerId]: 0 },
           players: [
