@@ -1015,3 +1015,108 @@ body {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.15); }
 }
+
+/* --- PWA Install Elements --- */
+.install-btn {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 255, 170, 0.25));
+  border-color: var(--green-tactical);
+  color: #00ffaa;
+  font-weight: 700;
+  animation: pulse-green-border 2.5s infinite;
+}
+
+@keyframes pulse-green-border {
+  0%, 100% { box-shadow: 0 0 6px rgba(0, 255, 170, 0.3); }
+  50% { box-shadow: 0 0 14px rgba(0, 255, 170, 0.7); }
+}
+
+.lobby-install-card {
+  background: linear-gradient(135deg, rgba(13, 27, 42, 0.9), rgba(7, 16, 30, 0.95));
+  border: 1px solid rgba(0, 255, 170, 0.4);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 15px rgba(0, 255, 170, 0.15);
+}
+
+.install-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.install-icon {
+  font-size: 1.5rem;
+}
+
+.install-text strong {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--text-highlight);
+}
+
+.install-text p {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+.btn-install-action {
+  padding: 8px 14px;
+  background: var(--green-tactical);
+  color: #040811;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px rgba(0, 255, 170, 0.4);
+  transition: all 0.2s;
+}
+
+.btn-install-action:active {
+  transform: scale(0.95);
+}
+
+/* iOS Steps Guide */
+.ios-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+  margin: 10px 0;
+}
+
+.ios-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--bg-surface);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text-main);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+.ios-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cyan);
+  color: #040811;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}

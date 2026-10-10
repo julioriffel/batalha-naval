@@ -7,8 +7,15 @@
   <meta name="theme-color" content="#040811">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Batalha Naval">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓</text></svg>">
 </head>
 <body>
 
@@ -19,6 +26,7 @@
       <span class="brand-title">Batalha Naval</span>
     </div>
     <div class="hud-actions">
+      <button id="btn-install-app" class="icon-btn install-btn" style="display: none;" title="Instalar no Dispositivo">📲 Instalar</button>
       <button id="btn-mute" class="icon-btn" title="Alternar Som">🔊 Som</button>
     </div>
   </header>
@@ -71,6 +79,18 @@
         <button id="btn-join-room" class="btn-secondary">
           <span>🎯</span> Entrar na Partida
         </button>
+
+        <!-- Install PWA Card in Lobby -->
+        <div id="lobby-install-box" class="lobby-install-card" style="display: none;">
+          <div class="install-info">
+            <span class="install-icon">📲</span>
+            <div class="install-text">
+              <strong>Instalar no Celular</strong>
+              <p>Jogue em tela cheia com resposta tátil nativa</p>
+            </div>
+          </div>
+          <button id="btn-lobby-install" class="btn-install-action">Instalar</button>
+        </div>
       </div>
     </section>
 
@@ -205,6 +225,33 @@
 
       <button id="btn-rematch" class="btn-primary">
         🔄 Revanche Rápida
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: Instalação no iOS (Safari) -->
+  <div id="modal-ios-install" class="modal-overlay">
+    <div class="modal-card">
+      <h2 class="modal-title" style="color: var(--cyan); font-size: 1.35rem;">Instalar no iPhone / iPad</h2>
+      <p class="lobby-subtitle" style="margin-bottom: 16px;">Siga os passos abaixo no Safari:</p>
+      
+      <div class="ios-steps">
+        <div class="ios-step-item">
+          <span class="ios-step-num">1</span>
+          <span>Toque no botão <strong>Compartilhar</strong> (ícone <strong style="font-size: 1.1rem;">⎋</strong> ou quadrado com seta para cima) na barra inferior do Safari.</span>
+        </div>
+        <div class="ios-step-item">
+          <span class="ios-step-num">2</span>
+          <span>Role a lista para baixo e toque em <strong>"Adicionar à Tela de Início"</strong> (ícone <strong style="font-size: 1.1rem;">➕</strong>).</span>
+        </div>
+        <div class="ios-step-item">
+          <span class="ios-step-num">3</span>
+          <span>Toque em <strong>"Adicionar"</strong> no canto superior direito para instalar!</span>
+        </div>
+      </div>
+
+      <button id="btn-close-ios-modal" class="btn-primary" style="margin-top: 18px;">
+        Entendido!
       </button>
     </div>
   </div>

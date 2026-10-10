@@ -786,4 +786,86 @@
     }
   }
 
+  // --- PWA SERVICE WORKER & INSTALAÇÃO ---
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        console.log('[PWA] Service Worker tático registrado com sucesso:', reg.scope);
+      }).catch((err) => {
+        console.warn('[PWA] Falha ao registrar Service Worker:', err);
+      });
+    });
+  }
+
+  let deferredInstallPrompt = null;
+  const btnInstallHeader = document.getElementById('btn-install-app');
+  const lobbyInstallBox = document.getElementById('lobby-install-box');
+  const btnLobbyInstall = document.getElementById('btn-lobby-install');
+  const modalIosInstall = document.getElementById('modal-ios-install');
+  const btnCloseIosModal = document.getElementById('btn-close-ios-modal');
+
+  const isIos = () => {
+    const ua = window.navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod/.test(ua);
+  };
+
+  const isInStandaloneMode = () => {
+    return ('standalone' in window.navigator && window.navigator.standalone) ||
+           window.matchMedia('(display-mode: standalone)').matches;
+  };
+
+  // Se for iOS e não estiver em modo app instalado, exibe botão de instruções
+  if (!isInStandaloneMode()) {
+    if (isIos()) {
+      if (btnInstallHeader) btnInstallHeader.style.display = 'flex';
+      if (lobbyInstallBox) lobbyInstallBox.style.display = 'flex';
+    }
+  }
+
+  // Captura o prompt de instalação nativo no Android/Chrome/Edge
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!isInStandaloneMode()) {
+      if (btnInstallHeader) btnInstallHeader.style.display = 'flex';
+      if (lobbyInstallBox) lobbyInstallBox.style.display = 'flex';
+    }
+  });
+
+  function triggerInstall() {
+    window.tacticalAudio.click();
+    window.tacticalHaptics.click();
+
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then((choice) => {
+        if (choice.outcome === 'accepted') {
+          showToast('🎉 Aplicativo instalado com sucesso na sua tela inicial!');
+          if (btnInstallHeader) btnInstallHeader.style.display = 'none';
+          if (lobbyInstallBox) lobbyInstallBox.style.display = 'none';
+        }
+        deferredInstallPrompt = null;
+      });
+    } else if (isIos()) {
+      if (modalIosInstall) modalIosInstall.classList.add('active');
+    } else {
+      showToast('Abra as opções do navegador (⋮) e toque em "Adicionar à tela inicial"');
+    }
+  }
+
+  if (btnInstallHeader) btnInstallHeader.addEventListener('click', triggerInstall);
+  if (btnLobbyInstall) btnLobbyInstall.addEventListener('click', triggerInstall);
+  if (btnCloseIosModal) {
+    btnCloseIosModal.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      if (modalIosInstall) modalIosInstall.classList.remove('active');
+    });
+  }
+
+  window.addEventListener('appinstalled', () => {
+    showToast('⚓ Batalha Naval instalada como aplicativo!');
+    if (btnInstallHeader) btnInstallHeader.style.display = 'none';
+    if (lobbyInstallBox) lobbyInstallBox.style.display = 'none';
+  });
+
 })();
