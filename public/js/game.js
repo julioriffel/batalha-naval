@@ -77,8 +77,15 @@
   }
 
   btnMute.addEventListener('click', () => {
-    window.tacticalAudio.toggleMute();
+    const isMuted = window.tacticalAudio.toggleMute();
     updateMuteButton();
+    if (!isMuted) {
+      window.tacticalAudio.turnAlertSound();
+      const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+      if (isIos) {
+        showToast('🔔 No iPhone: desative a chave lateral de silencioso para ouvir os alarmes!', 4000);
+      }
+    }
   });
   updateMuteButton();
 
@@ -171,6 +178,9 @@
         initBattlePhase(msg.isYourTurn, msg.activePlayerName);
         showScreen('battle');
         window.tacticalAudio.sonarPing();
+        if (/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) {
+          showToast('🔔 Dica iPhone: mantenha a chave lateral fora do modo silencioso', 3500);
+        }
         break;
 
       case 'shot_result':
