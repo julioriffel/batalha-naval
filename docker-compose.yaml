@@ -1,0 +1,32 @@
+services:
+  batalha:
+    build: .
+    container_name: batalha-naval
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - PORT=3000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=server_public"
+
+      # ── HTTP router (port 80 -> redirect to HTTPS) ──
+      - "traefik.http.routers.batalha-http.rule=Host(`batalha.bolsadedados.com.br`)"
+      - "traefik.http.routers.batalha-http.entrypoints=web"
+      - "traefik.http.routers.batalha-http.middlewares=batalha-redirect-https"
+      - "traefik.http.middlewares.batalha-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.batalha-redirect-https.redirectscheme.permanent=true"
+
+      # ── HTTPS router (port 443 -> TLS Let's Encrypt) ──
+      - "traefik.http.routers.batalha.rule=Host(`batalha.bolsadedados.com.br`)"
+      - "traefik.http.routers.batalha.entrypoints=websecure"
+      - "traefik.http.routers.batalha.tls.certresolver=letsencrypt"
+      - "traefik.http.services.batalha.loadbalancer.server.port=3000"
+    networks:
+      - public
+
+networks:
+  public:
+    name: server_public
+    external: true

@@ -259,7 +259,9 @@ wss.on('connection', ws => {
         const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
         const playerName = (payload.playerName || 'Comandante 1').trim().substring(0, 15);
 
-        const joinUrl = `http://${LOCAL_IP}:${PORT}/?sala=${roomCode}`;
+        // Se o cliente enviar seu origin (ex: https://batalha.bolsadedados.com.br), usa ele; caso contrário, IP local
+        const origin = (payload.origin || '').replace(/\/$/, '') || `http://${LOCAL_IP}:${PORT}`;
+        const joinUrl = `${origin}/?sala=${roomCode}`;
         let qrDataUrl = '';
         try {
           qrDataUrl = await QRCode.toDataURL(joinUrl, {

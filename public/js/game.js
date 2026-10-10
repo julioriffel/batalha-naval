@@ -221,7 +221,7 @@
     window.tacticalHaptics.click();
     state.playerName = inputPlayerName.value.trim() || 'Comandante 1';
     await initWebSocket();
-    sendWS('create_room', { playerName: state.playerName });
+    sendWS('create_room', { playerName: state.playerName, origin: window.location.origin });
   });
 
   btnJoinRoom.addEventListener('click', async () => {
