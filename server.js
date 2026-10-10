@@ -90,6 +90,12 @@ const server = http.createServer(async (req, res) => {
     );
   }
 
+  // API: Ranking de vitórias dos comandantes
+  if (pathname === '/api/leaderboard') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ leaderboard: getSortedLeaderboard() }));
+  }
+
   // API: Dynamic QR Code generation
   if (pathname === '/api/qr') {
     const text = parsedUrl.searchParams.get('text') || `http://${LOCAL_IP}:${PORT}`;
@@ -150,6 +156,100 @@ const SHIP_SPECS = [
   { id: 'submarine', name: 'Submarino', size: 3, icon: '🌊' },
   { id: 'destroyer', name: 'Contratorpedeiro', size: 2, icon: '⚡' }
 ];
+
+// --- Leaderboard / Ranking de Jogadores ---
+const LEADERBOARD_FILE = path.join(__dirname, 'data', 'leaderboard.json');
+
+function loadLeaderboard() {
+  try {
+    if (fs.existsSync(LEADERBOARD_FILE)) {
+      return JSON.parse(fs.readFileSync(LEADERBOARD_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Erro lendo leaderboard:', e);
+  }
+  return {};
+}
+
+function saveLeaderboard(data) {
+  try {
+    const dir = path.dirname(LEADERBOARD_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Erro salvando leaderboard:', e);
+  }
+}
+
+let leaderboardData = loadLeaderboard();
+
+function getSortedLeaderboard(limit = 25) {
+  return Object.values(leaderboardData)
+    .sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      return b.matches - a.matches;
+    })
+    .slice(0, limit);
+}
+
+function recordMatchResult(winnerName, loserName, winnerShots, winnerHits, loserShots, loserHits) {
+  const now = new Date().toISOString();
+
+  // Atualiza Vencedor
+  const wKey = (winnerName || 'Comandante').trim().toLowerCase();
+  if (!leaderboardData[wKey]) {
+    leaderboardData[wKey] = {
+      name: (winnerName || 'Comandante').trim(),
+      wins: 0,
+      losses: 0,
+      matches: 0,
+      winRate: 0,
+      accuracy: 0,
+      totalShots: 0,
+      totalHits: 0,
+      lastPlayed: now
+    };
+  }
+  const w = leaderboardData[wKey];
+  w.name = (winnerName || 'Comandante').trim();
+  w.wins += 1;
+  w.matches += 1;
+  w.totalShots += (winnerShots || 0);
+  w.totalHits += (winnerHits || 0);
+  w.winRate = Math.round((w.wins / w.matches) * 100);
+  w.accuracy = w.totalShots > 0 ? Math.round((w.totalHits / w.totalShots) * 100) : 0;
+  w.lastPlayed = now;
+
+  // Atualiza Perdedor
+  const lKey = (loserName || 'Inimigo').trim().toLowerCase();
+  if (!leaderboardData[lKey]) {
+    leaderboardData[lKey] = {
+      name: (loserName || 'Inimigo').trim(),
+      wins: 0,
+      losses: 0,
+      matches: 0,
+      winRate: 0,
+      accuracy: 0,
+      totalShots: 0,
+      totalHits: 0,
+      lastPlayed: now
+    };
+  }
+  const l = leaderboardData[lKey];
+  l.name = (loserName || 'Inimigo').trim();
+  l.losses += 1;
+  l.matches += 1;
+  l.totalShots += (loserShots || 0);
+  l.totalHits += (loserHits || 0);
+  l.winRate = Math.round((l.wins / l.matches) * 100);
+  l.accuracy = l.totalShots > 0 ? Math.round((l.totalHits / l.totalShots) * 100) : 0;
+  l.lastPlayed = now;
+
+  saveLeaderboard(leaderboardData);
+  return getSortedLeaderboard();
+}
 
 // --- Rooms & Game State ---
 const rooms = new Map(); // roomCode -> room object
@@ -254,6 +354,13 @@ wss.on('connection', ws => {
       const payload = JSON.parse(message.toString());
       const { type } = payload;
 
+      // 0. CONSULTAR RANKING
+      if (type === 'get_leaderboard') {
+        return send(ws, 'leaderboard_data', {
+          leaderboard: getSortedLeaderboard()
+        });
+      }
+
       // 1. CRIAR SALA
       if (type === 'create_room') {
         const roomCode = generateRoomCode();
@@ -277,6 +384,7 @@ wss.on('connection', ws => {
         const room = {
           code: roomCode,
           state: 'waiting', // waiting -> placement -> battle -> gameover
+          scores: { [playerId]: 0 },
           players: [
             {
               id: playerId,
@@ -339,6 +447,8 @@ wss.on('connection', ws => {
         };
 
         room.players.push(newPlayer);
+        if (!room.scores) room.scores = {};
+        room.scores[playerId] = 0;
         room.state = 'placement';
         currentPlayerId = playerId;
         currentRoomCode = roomCode;
@@ -403,10 +513,16 @@ wss.on('connection', ws => {
 
           room.players.forEach((p, idx) => {
             const isTurn = idx === room.currentTurnIndex;
+            const opp = room.players[1 - idx];
             send(p.ws, 'battle_started', {
               isYourTurn: isTurn,
               activePlayerName: startingPlayer.name,
-              activePlayerId: startingPlayer.id
+              activePlayerId: startingPlayer.id,
+              sessionScore: {
+                myWins: room.scores ? (room.scores[p.id] || 0) : 0,
+                opponentWins: room.scores ? (room.scores[opp.id] || 0) : 0,
+                opponentName: opp ? opp.name : 'Inimigo'
+              }
             });
           });
         }
@@ -513,13 +629,36 @@ wss.on('connection', ws => {
 
         // Se o jogo acabou, envia tela de vitória/derrota com dados finais e revelação da frota inimiga
         if (isGameOver) {
+          if (!room.scores) {
+            room.scores = { [shooter.id]: 0, [defender.id]: 0 };
+          }
+          room.scores[shooter.id] = (room.scores[shooter.id] || 0) + 1;
+
+          // Atualiza ranking persistente no servidor
+          recordMatchResult(
+            shooter.name,
+            defender.name,
+            shooter.shotsFired,
+            shooter.hitsLanded,
+            defender.shotsFired,
+            defender.hitsLanded
+          );
+
+          const currentLeaderboard = getSortedLeaderboard();
+
           send(shooter.ws, 'game_over', {
             isWinner: true,
             winnerName: shooter.name,
             shotsFired: shooter.shotsFired,
             hitsLanded: shooter.hitsLanded,
             accuracy: Math.round((shooter.hitsLanded / shooter.shotsFired) * 100),
-            opponentFleet: defender.ships
+            opponentFleet: defender.ships,
+            sessionScore: {
+              myWins: room.scores[shooter.id],
+              opponentWins: room.scores[defender.id] || 0,
+              opponentName: defender.name
+            },
+            leaderboard: currentLeaderboard
           });
 
           send(defender.ws, 'game_over', {
@@ -528,7 +667,13 @@ wss.on('connection', ws => {
             shotsFired: defender.shotsFired,
             hitsLanded: defender.hitsLanded,
             accuracy: defender.shotsFired > 0 ? Math.round((defender.hitsLanded / defender.shotsFired) * 100) : 0,
-            opponentFleet: shooter.ships
+            opponentFleet: shooter.ships,
+            sessionScore: {
+              myWins: room.scores[defender.id] || 0,
+              opponentWins: room.scores[shooter.id],
+              opponentName: shooter.name
+            },
+            leaderboard: currentLeaderboard
           });
         }
         return;

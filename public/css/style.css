@@ -1120,3 +1120,162 @@ body {
   font-size: 0.75rem;
   flex-shrink: 0;
 }
+
+/* --- Ranking & Leaderboard Styles --- */
+.ranking-btn {
+  border-color: rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+}
+
+.ranking-btn:hover, .ranking-btn:active {
+  border-color: #ffd700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  background: rgba(255, 215, 0, 0.15);
+}
+
+/* Placar de Confronto da Sessão */
+.duel-score-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  margin-bottom: 10px;
+}
+
+.duel-player-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.duel-player-tag.me {
+  color: var(--cyan);
+}
+
+.duel-player-tag.opp {
+  color: #ffaa00;
+}
+
+.duel-p-score {
+  font-size: 1.15rem;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.duel-vs-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+/* Game Over Duel Box */
+.gameover-duel-card {
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.gameover-duel-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  display: block;
+}
+
+.gameover-duel-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffd700;
+  margin-top: 3px;
+}
+
+/* Modal Ranking */
+.modal-ranking-card {
+  max-width: 520px;
+  padding: 22px 18px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ranking-table-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 52vh;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  background: var(--bg-dark);
+}
+
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.ranking-table th {
+  background: var(--bg-surface);
+  color: var(--cyan);
+  padding: 10px 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.ranking-table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.ranking-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ranking-table tr.top-1 {
+  background: rgba(255, 215, 0, 0.1);
+  color: #fff;
+  font-weight: 700;
+}
+
+.ranking-table tr.top-1 td:nth-child(2) {
+  color: #ffd700;
+}
+
+.ranking-table tr.top-2 {
+  background: rgba(192, 192, 192, 0.08);
+}
+
+.ranking-table tr.top-3 {
+  background: rgba(205, 127, 50, 0.08);
+}
+
+.ranking-table tr.is-me {
+  background: rgba(0, 240, 255, 0.12) !important;
+  border-left: 3px solid var(--cyan);
+}
+
+.ranking-table tr.is-me td:nth-child(2) {
+  color: var(--cyan);
+  font-weight: 700;
+}

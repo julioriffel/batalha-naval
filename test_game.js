@@ -18,6 +18,19 @@ async function runTest() {
 
   console.log('✅ /api/info OK:', info);
 
+  // 1.1 Testar HTTP Leaderboard API
+  const leaderboardApi = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${PORT}/api/leaderboard`, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  if (!Array.isArray(leaderboardApi.leaderboard)) {
+    throw new Error('API /api/leaderboard não retornou array válido');
+  }
+  console.log(`✅ /api/leaderboard OK (${leaderboardApi.leaderboard.length} registros)`);
+
   // 2. Conectar Jogador 1 (Host)
   const ws1 = new WebSocket(`ws://localhost:${PORT}`);
   let roomCode = '';
@@ -91,6 +104,11 @@ async function runTest() {
   console.log('✅ Batalha iniciada com sucesso!');
   console.log(`   Turno inicial: ${battleDataP1.isYourTurn ? 'Jogador 1' : 'Jogador 2'}`);
 
+  if (!battleDataP1.sessionScore || typeof battleDataP1.sessionScore.myWins === 'undefined') {
+    throw new Error('sessionScore não foi enviado em battle_started');
+  }
+  console.log('✅ Placar de duelo (sessionScore) recebido:', battleDataP1.sessionScore);
+
   // 5. Testar um disparo
   const shooterWs = battleDataP1.isYourTurn ? ws1 : ws2;
   const victimWs = battleDataP1.isYourTurn ? ws2 : ws1;
@@ -119,6 +137,23 @@ async function runTest() {
 
   shooterWs.send(JSON.stringify({ type: 'fire', row: targetRow, col: targetCol }));
   await shotResolved;
+
+  // 6. Testar solicitação de ranking via WebSocket
+  const wsLeaderboardReceived = new Promise((resolve, reject) => {
+    ws1.on('message', m => {
+      const d = JSON.parse(m.toString());
+      if (d.type === 'leaderboard_data') {
+        if (Array.isArray(d.leaderboard)) {
+          console.log(`✅ leaderboard_data via WebSocket OK (${d.leaderboard.length} registros)`);
+          resolve();
+        } else {
+          reject(new Error('leaderboard_data não contém array'));
+        }
+      }
+    });
+  });
+  ws1.send(JSON.stringify({ type: 'get_leaderboard' }));
+  await wsLeaderboardReceived;
 
   ws1.close();
   ws2.close();

@@ -176,6 +176,9 @@
 
       case 'battle_started':
         initBattlePhase(msg.isYourTurn, msg.activePlayerName);
+        if (msg.sessionScore) {
+          updateDuelScore(msg.sessionScore);
+        }
         showScreen('battle');
         window.tacticalAudio.sonarPing();
         if (/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) {
@@ -189,6 +192,10 @@
 
       case 'game_over':
         handleGameOver(msg);
+        break;
+
+      case 'leaderboard_data':
+        renderLeaderboard(msg.leaderboard);
         break;
 
       case 'opponent_wants_rematch':
@@ -727,6 +734,20 @@
     document.getElementById('stat-hits').textContent = msg.hitsLanded;
     document.getElementById('stat-accuracy').textContent = `${msg.accuracy}%`;
 
+    // Atualiza placar do confronto da sessão
+    if (msg.sessionScore) {
+      updateDuelScore(msg.sessionScore);
+      const duelText = document.getElementById('gameover-duel-text');
+      if (duelText) {
+        duelText.textContent = `${state.playerName} ${msg.sessionScore.myWins} ⚔️ ${msg.sessionScore.opponentWins} ${msg.sessionScore.opponentName}`;
+      }
+    }
+
+    // Se o servidor enviou o ranking atualizado, pré-renderiza
+    if (msg.leaderboard) {
+      renderLeaderboard(msg.leaderboard);
+    }
+
     const btnRematch = document.getElementById('btn-rematch');
     btnRematch.disabled = false;
     btnRematch.textContent = '🔄 Revanche Rápida';
@@ -747,6 +768,128 @@
     window.tacticalHaptics.click();
     sendWS('request_rematch');
   });
+
+  // --- RANKING & DUEL SCORE UTILITIES ---
+  function updateDuelScore(score) {
+    if (!score) return;
+    const myNameEl = document.getElementById('duel-my-name');
+    const myScoreEl = document.getElementById('duel-my-score');
+    const oppNameEl = document.getElementById('duel-opp-name');
+    const oppScoreEl = document.getElementById('duel-opp-score');
+
+    if (myNameEl) myNameEl.textContent = state.playerName || 'Você';
+    if (myScoreEl) myScoreEl.textContent = score.myWins ?? 0;
+    if (oppNameEl) oppNameEl.textContent = score.opponentName || state.opponentName || 'Inimigo';
+    if (oppScoreEl) oppScoreEl.textContent = score.opponentWins ?? 0;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderLeaderboard(leaderboard) {
+    const tbody = document.getElementById('ranking-table-body');
+    if (!tbody) return;
+
+    if (!Array.isArray(leaderboard) || leaderboard.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 22px;">
+            Nenhuma batalha registrada ainda. Vença a primeira para liderar o quadro de honra!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const currentName = (state.playerName || '').trim().toLowerCase();
+
+    tbody.innerHTML = leaderboard.map((item, idx) => {
+      const pos = idx + 1;
+      let posBadge = `${pos}º`;
+      let trClass = '';
+
+      if (pos === 1) {
+        posBadge = '🥇 1º';
+        trClass = 'top-1';
+      } else if (pos === 2) {
+        posBadge = '🥈 2º';
+        trClass = 'top-2';
+      } else if (pos === 3) {
+        posBadge = '🥉 3º';
+        trClass = 'top-3';
+      }
+
+      const isMe = (item.name || '').trim().toLowerCase() === currentName;
+      if (isMe) {
+        trClass += (trClass ? ' ' : '') + 'is-me';
+      }
+
+      const nameDisplay = escapeHtml(item.name) + (isMe ? ' <span style="font-size:0.75rem; color:var(--cyan); font-weight:normal;">(Você)</span>' : '');
+
+      return `
+        <tr class="${trClass}">
+          <td style="font-weight: 800;">${posBadge}</td>
+          <td>${nameDisplay}</td>
+          <td><strong style="color: #00ff88;">${item.wins}</strong></td>
+          <td style="color: var(--text-dim);">${item.losses}</td>
+          <td>${item.winRate}%</td>
+          <td>${item.accuracy}%</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function fetchAndShowLeaderboard() {
+    window.tacticalAudio.click();
+    const modalRanking = document.getElementById('modal-ranking');
+    if (modalRanking) modalRanking.classList.add('active');
+
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+      sendWS('get_leaderboard');
+    } else {
+      try {
+        const res = await fetch('/api/leaderboard');
+        const data = await res.json();
+        if (data.leaderboard) {
+          renderLeaderboard(data.leaderboard);
+        }
+      } catch (err) {
+        console.error('Erro buscando ranking:', err);
+      }
+    }
+  }
+
+  const modalRanking = document.getElementById('modal-ranking');
+  const btnOpenRanking = document.getElementById('btn-open-ranking');
+  const btnLobbyRanking = document.getElementById('btn-lobby-ranking');
+  const btnGameOverRanking = document.getElementById('btn-gameover-ranking');
+  const btnCloseRankingModal = document.getElementById('btn-close-ranking-modal');
+
+  if (btnOpenRanking) btnOpenRanking.addEventListener('click', fetchAndShowLeaderboard);
+  if (btnLobbyRanking) btnLobbyRanking.addEventListener('click', fetchAndShowLeaderboard);
+  if (btnGameOverRanking) btnGameOverRanking.addEventListener('click', fetchAndShowLeaderboard);
+
+  if (btnCloseRankingModal) {
+    btnCloseRankingModal.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      if (modalRanking) modalRanking.classList.remove('active');
+    });
+  }
+
+  if (modalRanking) {
+    modalRanking.addEventListener('click', (e) => {
+      if (e.target === modalRanking) {
+        modalRanking.classList.remove('active');
+      }
+    });
+  }
 
   // --- GRID RENDER UTILITY ---
   function renderGrid(container, isInteractive, onClick, onHover) {

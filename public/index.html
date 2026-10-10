@@ -26,6 +26,7 @@
       <span class="brand-title">Batalha Naval</span>
     </div>
     <div class="hud-actions">
+      <button id="btn-open-ranking" class="icon-btn ranking-btn" title="Classificação dos Comandantes">🏆 Ranking</button>
       <button id="btn-install-app" class="icon-btn install-btn" style="display: none;" title="Instalar no Dispositivo">📲 Instalar</button>
       <button id="btn-mute" class="icon-btn" title="Alternar Som">🔊 Som</button>
     </div>
@@ -78,6 +79,10 @@
 
         <button id="btn-join-room" class="btn-secondary">
           <span>🎯</span> Entrar na Partida
+        </button>
+
+        <button id="btn-lobby-ranking" class="btn-secondary" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
+          <span>🏆</span> Ver Ranking de Comandantes
         </button>
 
         <!-- Install PWA Card in Lobby -->
@@ -151,6 +156,19 @@
 
     <!-- SCREEN 4: BATTLE COMBAT -->
     <section id="screen-battle" class="screen">
+
+      <!-- Duel Score Bar (Placar de Confronto da Sessão) -->
+      <div id="duel-score-bar" class="duel-score-bar">
+        <div class="duel-player-tag me">
+          <span id="duel-my-name" class="duel-p-name">Você</span>
+          <span id="duel-my-score" class="duel-p-score">0</span>
+        </div>
+        <div class="duel-vs-badge">⚔️ CONFRONTO</div>
+        <div class="duel-player-tag opp">
+          <span id="duel-opp-score" class="duel-p-score">0</span>
+          <span id="duel-opp-name" class="duel-p-name">Inimigo</span>
+        </div>
+      </div>
       
       <!-- Mobile Switch Tabs -->
       <div class="mobile-tabs">
@@ -223,8 +241,53 @@
         </div>
       </div>
 
-      <button id="btn-rematch" class="btn-primary">
-        🔄 Revanche Rápida
+      <!-- Placar da Sessão no Game Over -->
+      <div id="gameover-duel-box" class="gameover-duel-card">
+        <span class="gameover-duel-label">⚔️ Placar da Batalha nesta Sala</span>
+        <div id="gameover-duel-text" class="gameover-duel-val">Você 0 x 0 Inimigo</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
+        <button id="btn-rematch" class="btn-primary">
+          🔄 Revanche Rápida
+        </button>
+        <button id="btn-gameover-ranking" class="btn-secondary" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
+          🏆 Ver Ranking Geral
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Ranking Geral de Comandantes -->
+  <div id="modal-ranking" class="modal-overlay">
+    <div class="modal-card modal-ranking-card">
+      <h2 class="modal-title" style="color: #ffd700; font-size: 1.4rem;">🏆 Quadro de Honra</h2>
+      <p class="lobby-subtitle" style="margin-bottom: 14px;">Ranking Geral de Vitórias dos Comandantes</p>
+
+      <div class="ranking-table-wrapper">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th style="width: 38px;">#</th>
+              <th>Comandante</th>
+              <th>Vitórias</th>
+              <th>Derrotas</th>
+              <th>Aprov.</th>
+              <th>Mira</th>
+            </tr>
+          </thead>
+          <tbody id="ranking-table-body">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 18px;">
+                Carregando dados dos comandantes...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <button id="btn-close-ranking-modal" class="btn-primary" style="margin-top: 16px;">
+        Fechar
       </button>
     </div>
   </div>
