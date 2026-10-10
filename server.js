@@ -337,7 +337,7 @@ const server = http.createServer(async (req, res) => {
     const battleUrl = `${origin}/?sala=${roomCode}&desafio=1`;
 
     const pushPayload = JSON.stringify({
-      title: `⚔️ Desafio Naval de ${myPlayer.name}!`,
+      title: `Desafio Naval de ${myPlayer.name}`,
       body: `${myPlayer.name} te chamou para combater na Batalha Naval! Toque para entrar na sala ${roomCode}.`,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
@@ -403,11 +403,11 @@ const server = http.createServer(async (req, res) => {
 
 // --- Game Rules & Ship Specs ---
 const SHIP_SPECS = [
-  { id: 'carrier', name: 'Porta-Aviões', size: 5, icon: '🚢' },
-  { id: 'battleship', name: 'Encouraçado', size: 4, icon: '⚔️' },
-  { id: 'cruiser', name: 'Cruzador', size: 3, icon: '🛡️' },
-  { id: 'submarine', name: 'Submarino', size: 3, icon: '🌊' },
-  { id: 'destroyer', name: 'Contratorpedeiro', size: 2, icon: '⚡' }
+  { id: 'carrier', name: 'Porta-Aviões', size: 5, icon: '' },
+  { id: 'battleship', name: 'Encouraçado', size: 4, icon: '' },
+  { id: 'cruiser', name: 'Cruzador', size: 3, icon: '' },
+  { id: 'submarine', name: 'Submarino', size: 3, icon: '' },
+  { id: 'destroyer', name: 'Contratorpedeiro', size: 2, icon: '' }
 ];
 
 // --- Leaderboard / Ranking de Jogadores ---

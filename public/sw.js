@@ -3,7 +3,7 @@
  * Caching tático offline e suporte a instalação como aplicativo nativo.
  */
 
-const CACHE_NAME = 'batalha-naval-v1.5';
+const CACHE_NAME = 'batalha-naval-v1.6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -79,7 +79,7 @@ self.addEventListener('fetch', (event) => {
 // --- PUSH NOTIFICATIONS ---
 self.addEventListener('push', (event) => {
   let data = {
-    title: '⚓ Batalha Naval High-Tech',
+    title: 'Batalha Naval',
     body: 'Você recebeu um novo chamado tático!',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
@@ -103,7 +103,7 @@ self.addEventListener('push', (event) => {
     renotify: true,
     data: data.data || { url: '/' },
     actions: [
-      { action: 'accept', title: '⚔️ Aceitar Batalha' }
+      { action: 'accept', title: 'Aceitar Batalha' }
     ]
   };
 

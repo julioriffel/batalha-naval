@@ -25,11 +25,11 @@
     isPublicRoom: true,
     isHost: false,
     shipSpecs: [
-      { id: 'carrier', name: 'Porta-Aviões', size: 5, icon: '🚢' },
-      { id: 'battleship', name: 'Encouraçado', size: 4, icon: '⚔️' },
-      { id: 'cruiser', name: 'Cruzador', size: 3, icon: '🛡️' },
-      { id: 'submarine', name: 'Submarino', size: 3, icon: '🌊' },
-      { id: 'destroyer', name: 'Contratorpedeiro', size: 2, icon: '⚡' }
+      { id: 'carrier', name: 'Porta-Aviões', size: 5 },
+      { id: 'battleship', name: 'Encouraçado', size: 4 },
+      { id: 'cruiser', name: 'Cruzador', size: 3 },
+      { id: 'submarine', name: 'Submarino', size: 3 },
+      { id: 'destroyer', name: 'Contratorpedeiro', size: 2 }
     ],
     placement: {
       ships: [], // { id, name, size, coords: [{row, col}] }
@@ -91,8 +91,8 @@
   function updateMuteButton() {
     const muted = window.tacticalAudio.isMuted();
     btnMute.innerHTML = muted 
-      ? '<span class="btn-icon">🔇</span><span class="btn-label">Mudo</span>' 
-      : '<span class="btn-icon">🔊</span><span class="btn-label">Som</span>';
+      ? `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg><span class="btn-label">Mudo</span>` 
+      : `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg><span class="btn-label">Som</span>`;
   }
 
   btnMute.addEventListener('click', () => {
@@ -102,7 +102,7 @@
       window.tacticalAudio.turnAlertSound();
       const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
       if (isIos) {
-        showToast('🔔 No iPhone: desative a chave lateral de silencioso para ouvir os alarmes!', 4000);
+        showToast('iPhone: desative o modo silencioso para áudio.', 3500);
       }
     }
   });
@@ -163,12 +163,12 @@
         const waitingPrivacyBadge = document.getElementById('waiting-privacy-badge');
         if (waitingPrivacyBadge) {
           if (msg.isPublic !== false) {
-            waitingPrivacyBadge.innerHTML = '🌐 Sala Pública <span style="font-size:0.75rem; opacity:0.8;">(visível no radar público)</span>';
+            waitingPrivacyBadge.textContent = 'Sala Pública';
             waitingPrivacyBadge.style.background = 'rgba(0, 240, 255, 0.15)';
             waitingPrivacyBadge.style.color = 'var(--cyan)';
             waitingPrivacyBadge.style.borderColor = 'var(--cyan)';
           } else {
-            waitingPrivacyBadge.innerHTML = '🔒 Sala Privada <span style="font-size:0.75rem; opacity:0.8;">(acesso apenas com código/link direto)</span>';
+            waitingPrivacyBadge.textContent = 'Sala Privada';
             waitingPrivacyBadge.style.background = 'rgba(255, 170, 0, 0.15)';
             waitingPrivacyBadge.style.color = '#ffaa00';
             waitingPrivacyBadge.style.borderColor = '#ffaa00';
@@ -192,7 +192,7 @@
           state.opponentFriendCode = msg.opponentFriendCode;
           updateOpponentFriendButtons();
         }
-        showToast(`Entrou na sala do Comandante ${msg.opponentName}!`);
+        showToast(`Conectado à sala de ${msg.opponentName}`);
         break;
 
       case 'opponent_joined':
@@ -201,7 +201,7 @@
           state.opponentFriendCode = msg.opponentFriendCode;
           updateOpponentFriendButtons();
         }
-        showToast(`Comandante ${msg.opponentName} conectado ao radar!`);
+        showToast(`${msg.opponentName} conectado ao radar`);
         break;
 
       case 'start_placement':
@@ -213,12 +213,12 @@
 
       case 'fleet_confirmed':
         document.getElementById('btn-confirm-fleet').disabled = true;
-        document.getElementById('btn-confirm-fleet').textContent = '✅ Frota Posicionada!';
-        document.getElementById('placement-status-text').textContent = 'Aguardando o adversário terminar o posicionamento...';
+        document.getElementById('btn-confirm-fleet').textContent = 'Frota Pronta';
+        document.getElementById('placement-status-text').textContent = 'Aguardando oponente...';
         break;
 
       case 'opponent_ready':
-        showToast(`Oponente terminou de posicionar a frota!`);
+        showToast('Oponente pronto para a batalha');
         break;
 
       case 'battle_started':
@@ -232,9 +232,6 @@
         }
         showScreen('battle');
         window.tacticalAudio.sonarPing();
-        if (/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())) {
-          showToast('🔔 Dica iPhone: mantenha a chave lateral fora do modo silencioso', 3500);
-        }
         break;
 
       case 'shot_result':
@@ -254,20 +251,20 @@
         break;
 
       case 'friend_added_notice':
-        showToast(`⭐ O Comandante ${msg.fromName} (${msg.fromCode}) adicionou você como amigo!`, 5000);
+        showToast(`Comandante ${msg.fromName} (${msg.fromCode}) adicionou você como amigo.`, 5000);
         window.tacticalAudio.sonarPing();
         fetchAndRenderFriends();
         break;
 
       case 'opponent_wants_rematch':
-        showToast(msg.message || 'Oponente pediu revanche!');
+        showToast(msg.message || 'Oponente pediu revanche.');
         break;
 
       case 'rematch_pending':
         const btnRematch = document.getElementById('btn-rematch');
         if (btnRematch) {
           btnRematch.disabled = true;
-          btnRematch.textContent = '⏳ Aguardando adversário...';
+          btnRematch.textContent = 'Aguardando adversário...';
         }
         break;
 
@@ -277,19 +274,19 @@
         break;
 
       case 'opponent_disconnected':
-        showToast(msg.message, 5000);
-        hudTurnBanner.textContent = '⚠️ ADVERSÁRIO DESCONECTOU';
+        showToast(msg.message, 4000);
+        hudTurnBanner.textContent = 'ADVERSÁRIO DESCONECTOU';
         hudTurnBanner.className = 'turn-banner alert-danger';
         break;
 
       case 'surrender_acknowledged':
-        showToast('Você abandonou a partida.');
+        showToast('Partida encerrada.');
         resetMatchToLobby();
         break;
 
       case 'opponent_left':
-        showToast(msg.message || 'O adversário saiu da sala.', 5000);
-        hudTurnBanner.textContent = '⚠️ ADVERSÁRIO SAIU';
+        showToast(msg.message || 'O adversário saiu da sala.', 4000);
+        hudTurnBanner.textContent = 'ADVERSÁRIO SAIU';
         hudTurnBanner.className = 'turn-banner alert-danger';
         break;
 
@@ -298,7 +295,7 @@
         break;
 
       case 'error':
-        showToast(`⚠️ ${msg.message}`);
+        showToast(msg.message);
         break;
     }
   }
@@ -387,36 +384,34 @@
     if (list.length === 0) {
       publicRoomsContainer.innerHTML = `
         <div class="empty-rooms-msg">
-          <span style="font-size: 1.3rem; display: block; margin-bottom: 2px;">📡</span>
-          Nenhuma sala aberta no momento.<br>
-          <small style="color: var(--text-dim);">Crie uma sala acima ou desafie um amigo.</small>
+          Nenhuma sala aberta no momento.
         </div>
       `;
       return;
     }
 
     publicRoomsContainer.innerHTML = list.map(room => {
-      const hostName = escapeHtml(room.hostName || 'Comandante Anônimo');
+      const hostName = escapeHtml(room.hostName || 'Comandante');
       const code = escapeHtml(room.roomCode);
       const waitingSec = Math.floor((Date.now() - (room.createdAt || Date.now())) / 1000);
-      let timeText = 'agora mesmo';
+      let timeText = 'agora';
       if (waitingSec >= 60) {
-        timeText = `há ${Math.floor(waitingSec / 60)} min`;
+        timeText = `${Math.floor(waitingSec / 60)}m atrás`;
       } else if (waitingSec > 5) {
-        timeText = `há ${waitingSec}s`;
+        timeText = `${waitingSec}s atrás`;
       }
 
       return `
         <div class="public-room-item" data-code="${code}">
           <div class="room-info">
-            <div class="room-host">⚓ ${hostName}</div>
+            <div class="room-host">${hostName}</div>
             <div class="room-meta">
-              <span class="room-badge-code">Sala #${code}</span>
-              <span class="room-time">⏱️ ${timeText}</span>
+              <span class="room-badge-code">#${code}</span>
+              <span class="room-time">${timeText}</span>
             </div>
           </div>
           <button class="btn-join-public-room btn-tactical-accent" data-code="${code}">
-            Entrar ⚡
+            Entrar
           </button>
         </div>
       `;
@@ -437,7 +432,7 @@
       const data = await res.json();
       if (data && Array.isArray(data.rooms)) {
         renderPublicRooms(data.rooms);
-        if (notify) showToast('📡 Radar de batalhas atualizado!');
+        if (notify) showToast('Radar atualizado.');
       }
     } catch (err) {
       console.warn('Erro ao consultar salas abertas:', err);
@@ -465,7 +460,7 @@
     btnCopyLink.addEventListener('click', () => {
       const url = document.getElementById('network-ip-display').textContent;
       navigator.clipboard.writeText(url).then(() => {
-        showToast('📋 Link de acesso copiado!');
+        showToast('Link copiado!');
       }).catch(() => {
         showToast('Copie o endereço mostrado na tela.');
       });
@@ -481,10 +476,10 @@
     inputRoomCode.value = paramSala.toUpperCase();
     inputRoomCode.focus();
     if (isChallenge) {
-      showToast(`⚔️ DESAFIO PUSH RECEBIDO! Sala ${paramSala.toUpperCase()} carregada. Entre na partida!`, 6000);
+      showToast(`Desafio recebido: sala ${paramSala.toUpperCase()}`, 5000);
       window.tacticalAudio.turnAlertSound();
     } else {
-      showToast(`Código ${paramSala.toUpperCase()} carregado! Digite seu nome e entre.`);
+      showToast(`Código ${paramSala.toUpperCase()} carregado.`);
     }
   }
 
@@ -512,8 +507,8 @@
     state.placement.orientation = 'H';
 
     btnConfirmFleet.disabled = true;
-    btnConfirmFleet.textContent = '⚓ Pronto (0/5)';
-    document.getElementById('placement-status-text').textContent = 'Toque no radar para posicionar cada navio.';
+    btnConfirmFleet.textContent = 'Pronto (0/5)';
+    document.getElementById('placement-status-text').textContent = 'Posicione os navios no radar.';
 
     renderPlacementFleetChips();
     renderGrid(placementGridEl, false, onPlacementCellClick, onPlacementCellHover);
@@ -530,7 +525,7 @@
       if (isPlaced) chip.classList.add('placed');
       if (isSelected) chip.classList.add('selected');
 
-      chip.innerHTML = `${spec.icon} <span class="ship-chip-name">${spec.name}</span> <span class="ship-chip-size">${spec.size}</span>${isPlaced ? ' ✓' : ''}`;
+      chip.innerHTML = `<span class="ship-chip-name">${spec.name}</span> <span class="ship-chip-size">${spec.size}</span>${isPlaced ? ' •' : ''}`;
       chip.addEventListener('click', () => {
         window.tacticalAudio.click();
         state.placement.selectedShipId = spec.id;
@@ -544,7 +539,7 @@
   btnRotate.addEventListener('click', () => {
     window.tacticalAudio.click();
     state.placement.orientation = state.placement.orientation === 'H' ? 'V' : 'H';
-    btnRotate.innerHTML = `🔄 Girar (${state.placement.orientation})`;
+    btnRotate.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg> <span>Girar (${state.placement.orientation})</span>`;
   });
 
   btnClearPlacement.addEventListener('click', () => {
@@ -553,7 +548,7 @@
     renderPlacementFleetChips();
     updatePlacementGridDisplay();
     btnConfirmFleet.disabled = true;
-    btnConfirmFleet.textContent = '⚓ Pronto (0/5)';
+    btnConfirmFleet.textContent = 'Pronto (0/5)';
   });
 
   btnRandomPlacement.addEventListener('click', () => {
@@ -668,10 +663,10 @@
 
   function checkAllShipsPlaced() {
     const count = state.placement.ships.length;
-    btnConfirmFleet.textContent = count === 5 ? '⚓ Confirmar Frota!' : `⚓ Pronto (${count}/5)`;
+    btnConfirmFleet.textContent = count === 5 ? 'Iniciar Batalha' : `Pronto (${count}/5)`;
     btnConfirmFleet.disabled = count !== 5;
     if (count === 5) {
-      showToast('Frota completa! Confirme para iniciar.');
+      showToast('Frota pronta. Inicie a batalha.');
     }
   }
 
@@ -766,22 +761,22 @@
     if (isMyTurn) {
       if (isExtraTurn) {
         hudTurnBanner.className = 'turn-banner extra-turn';
-        if (titleEl) titleEl.textContent = '💥 TIRO EXTRA!';
-        if (subEl) subEl.textContent = 'Alvo atingido! Dispare novamente.';
-        showTurnSplash('extra', 'TIRO EXTRA!', 'Alvo atingido! Dispare novamente.', '💥');
+        if (titleEl) titleEl.textContent = 'TIRO EXTRA';
+        if (subEl) subEl.textContent = 'Dispare novamente.';
+        showTurnSplash('extra', 'TIRO EXTRA', 'Dispare novamente.');
         window.tacticalAudio.extraShotSound();
         window.tacticalHaptics.extraTurn();
       } else {
         hudTurnBanner.className = 'turn-banner your-turn';
-        if (titleEl) titleEl.textContent = '🟢 SUA VEZ!';
+        if (titleEl) titleEl.textContent = 'SEU TURNO';
         if (subEl) subEl.textContent = 'Toque no radar para disparar.';
-        showTurnSplash('', 'SUA VEZ!', 'Disparo autorizado! Toque no radar.', '⚡');
+        showTurnSplash('', 'SEU TURNO', 'Disparo autorizado.');
         window.tacticalAudio.turnAlertSound();
         window.tacticalHaptics.yourTurn();
       }
 
       if (radarBadge) {
-        radarBadge.textContent = '🟢 AUTORIZADO';
+        radarBadge.textContent = 'AUTORIZADO';
         radarBadge.className = 'radar-status-badge badge-active';
       }
       if (attackRadarCard) {
@@ -792,11 +787,11 @@
       switchBattleTab('attack');
     } else {
       hudTurnBanner.className = 'turn-banner opponent-turn';
-      if (titleEl) titleEl.textContent = `⏳ TURNO: ${activePlayerName.toUpperCase()}`;
-      if (subEl) subEl.textContent = 'Aguarde o disparo adversário...';
+      if (titleEl) titleEl.textContent = `TURNO: ${activePlayerName.toUpperCase()}`;
+      if (subEl) subEl.textContent = 'Aguardando oponente...';
 
       if (radarBadge) {
-        radarBadge.textContent = '🔒 TRAVADO';
+        radarBadge.textContent = 'BLOQUEADO';
         radarBadge.className = 'radar-status-badge badge-locked';
       }
       if (attackRadarCard) {
@@ -804,7 +799,7 @@
         attackRadarCard.classList.add('radar-locked');
       }
 
-      showTurnSplash('opponent', 'TURNO DO INIMIGO', `Aguardando ${activePlayerName}...`, '⏳');
+      showTurnSplash('opponent', 'TURNO INIMIGO', `Aguardando ${activePlayerName}...`);
     }
   }
 
@@ -827,7 +822,7 @@
   function onAttackCellClick(row, col) {
     if (!state.battle.isMyTurn) {
       window.tacticalHaptics.miss();
-      showToast('🔒 Aguarde sua vez de atirar!', 2000);
+      showToast('Aguarde sua vez de disparar.', 2000);
       return;
     }
 
@@ -859,19 +854,19 @@
         if (sunkShip) {
           window.tacticalAudio.sunkAlarm();
           window.tacticalHaptics.sunk();
-          showToast(`☠️ AFUNDOU! ${sunkShip.name} destruído!`, 3500);
+          showToast(`${sunkShip.name} destruído!`, 3000);
           state.battle.enemySunkCount++;
           markShipSunk(attackGridEl, sunkShip.coords);
           const enemyPip = document.getElementById(`enemy-pip-${sunkShip.id}`);
           if (enemyPip) enemyPip.classList.add('sunk');
         } else {
-          showToast('💥 ACERTOU! Fogo no alvo!', 2000);
+          showToast('Tiro certeiro!', 2000);
         }
       } else {
         window.tacticalAudio.waterSplash();
         window.tacticalHaptics.miss();
         cell.className = 'grid-cell miss';
-        showToast('🌊 ÁGUA!', 1500);
+        showToast('Água', 1500);
       }
     } else {
       // Atualiza a Frota de Defesa
@@ -890,13 +885,13 @@
         if (sunkShip) {
           window.tacticalAudio.sunkAlarm();
           window.tacticalHaptics.sunk();
-          showToast(`🚨 Nosso ${sunkShip.name} afundou!`, 3500);
+          showToast(`Nosso ${sunkShip.name} afundou!`, 3000);
           state.battle.mySunkCount++;
           markShipSunk(defenseGridEl, sunkShip.coords);
           const myPip = document.getElementById(`my-pip-${sunkShip.id}`);
           if (myPip) myPip.classList.add('sunk');
         } else {
-          showToast('⚠️ IMPACTO na nossa frota!', 2000);
+          showToast('Navio atingido!', 2000);
         }
       } else {
         window.tacticalAudio.waterSplash();
@@ -928,14 +923,14 @@
       enemyPip.className = 'ship-pip';
       enemyPip.id = `enemy-pip-${spec.id}`;
       enemyPip.title = `${spec.name} (${spec.size})`;
-      enemyPip.innerHTML = `<span class="pip-icon">${spec.icon}</span><span class="pip-size">${spec.size}</span>`;
+      enemyPip.innerHTML = `<span class="pip-size">${spec.size}</span>`;
       enemyContainer.appendChild(enemyPip);
 
       const myPip = document.createElement('span');
       myPip.className = 'ship-pip';
       myPip.id = `my-pip-${spec.id}`;
       myPip.title = `${spec.name} (${spec.size})`;
-      myPip.innerHTML = `<span class="pip-icon">${spec.icon}</span><span class="pip-size">${spec.size}</span>`;
+      myPip.innerHTML = `<span class="pip-size">${spec.size}</span>`;
       myContainer.appendChild(myPip);
     });
   }
@@ -950,10 +945,10 @@
     const card = modal.querySelector('.modal-card');
 
     card.className = `modal-card ${isWin ? 'victory' : 'defeat'}`;
-    document.getElementById('modal-title').textContent = isWin ? '🏆 VITÓRIA NAVAL!' : '☠️ DERROTA!';
+    document.getElementById('modal-title').textContent = isWin ? 'VITÓRIA' : 'DERROTA';
     document.getElementById('modal-subtitle').textContent = isWin 
-      ? 'Você aniquilou toda a frota adversária!' 
-      : 'Todos os seus navios de guerra foram afundados.';
+      ? 'Frota inimiga destruída.' 
+      : 'Sua frota foi destruída.';
 
     document.getElementById('stat-shots').textContent = msg.shotsFired;
     document.getElementById('stat-hits').textContent = msg.hitsLanded;
@@ -964,7 +959,7 @@
       updateDuelScore(msg.sessionScore);
       const duelText = document.getElementById('gameover-duel-text');
       if (duelText) {
-        duelText.textContent = `${state.playerName} ${msg.sessionScore.myWins} ⚔️ ${msg.sessionScore.opponentWins} ${msg.sessionScore.opponentName}`;
+        duelText.textContent = `${state.playerName} ${msg.sessionScore.myWins} x ${msg.sessionScore.opponentWins} ${msg.sessionScore.opponentName}`;
       }
     }
 
@@ -975,7 +970,7 @@
 
     const btnRematch = document.getElementById('btn-rematch');
     btnRematch.disabled = false;
-    btnRematch.textContent = '🔄 Revanche Rápida';
+    btnRematch.textContent = 'Revanche';
 
     if (isWin) {
       window.tacticalAudio.victoryFanfare();
@@ -1037,17 +1032,14 @@
 
     tbody.innerHTML = leaderboard.map((item, idx) => {
       const pos = idx + 1;
-      let posBadge = `${pos}º`;
+      let posBadge = `<span class="pos-num pos-${pos}">${pos}</span>`;
       let trClass = '';
 
       if (pos === 1) {
-        posBadge = '🥇 1º';
         trClass = 'top-1';
       } else if (pos === 2) {
-        posBadge = '🥈 2º';
         trClass = 'top-2';
       } else if (pos === 3) {
-        posBadge = '🥉 3º';
         trClass = 'top-3';
       }
 
@@ -1164,16 +1156,16 @@
 
     if (active) {
       box.classList.add('active');
-      if (icon) icon.textContent = '✅';
-      if (title) title.textContent = 'Notificações Push Ativas';
-      if (desc) desc.textContent = 'Você receberá os chamados de batalha dos seus amigos direto no celular!';
+      if (icon) icon.innerHTML = '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+      if (title) title.textContent = 'Notificações Ativas';
+      if (desc) desc.textContent = 'Você receberá chamados de amigos direto no celular.';
       btn.textContent = 'Ativado';
       btn.disabled = true;
     } else {
       box.classList.remove('active');
-      if (icon) icon.textContent = '🔔';
+      if (icon) icon.innerHTML = '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
       if (title) title.textContent = 'Notificações Push';
-      if (desc) desc.textContent = 'Ative para receber chamados de batalha mesmo fora do jogo.';
+      if (desc) desc.textContent = 'Receba chamados de batalha fora do jogo.';
       btn.textContent = 'Ativar';
       btn.disabled = false;
     }
@@ -1199,12 +1191,12 @@
   async function subscribeToPushNotifications() {
     window.tacticalAudio.click();
     if (!('Notification' in window) || !('PushManager' in window)) {
-      showToast('⚠️ Seu navegador não suporta Web Push Notifications.');
+      showToast('Seu navegador não suporta notificações Push.');
       return;
     }
 
     if (isIos() && !isInStandaloneMode()) {
-      showToast('📲 No iPhone: instale o app na Tela de Início primeiro para habilitar o Push!', 5000);
+      showToast('No iPhone: instale o app na Tela de Início para habilitar o Push.', 5000);
       if (modalIosInstall) modalIosInstall.classList.add('active');
       return;
     }
@@ -1212,7 +1204,7 @@
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        showToast('⚠️ Permissão de notificações não concedida no navegador.');
+        showToast('Permissão de notificações não concedida no navegador.');
         return;
       }
 
@@ -1243,7 +1235,7 @@
         state.pushEnabled = true;
         updatePushStatusUI(true);
         window.tacticalAudio.sonarPing();
-        showToast('🔔 Notificações push ativadas com sucesso! Você receberá desafios de amigos.');
+        showToast('Notificações push ativadas com sucesso.');
       } else {
         showToast(subData.error || 'Erro ao ativar push.');
       }
@@ -1291,16 +1283,16 @@
                 <span style="font-size:0.75rem; color:var(--text-dim);">${f.code}</span>
               </div>
               <div class="friend-badges">
-                ${f.isMutual ? '<span class="badge-mutual">✅ Amigos Mútuos</span>' : '<span class="badge-pending">⏳ Aguardando ele te adicionar</span>'}
-                ${f.pushEnabled ? '<span class="badge-push-on">🔔 Push Ativo</span>' : '<span class="badge-push-off">🔕 Sem Push</span>'}
+                ${f.isMutual ? '<span class="badge-mutual">Mútuo</span>' : '<span class="badge-pending">Pendente</span>'}
+                ${f.pushEnabled ? '<span class="badge-push-on">Push Ativo</span>' : '<span class="badge-push-off">Sem Push</span>'}
               </div>
             </div>
             <div class="friend-actions">
               <button class="btn-challenge" ${canChallenge ? '' : 'disabled'} title="${challengeTitle}" data-code="${f.code}">
-                ⚔️ Chamar
+                Desafiar
               </button>
               <button class="btn-remove-friend" title="Remover amigo" data-code="${f.code}">
-                🗑️
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
             </div>
           </div>
@@ -1349,15 +1341,15 @@
       if (data.success) {
         window.tacticalAudio.sonarPing();
         if (data.isMutual) {
-          showToast(`🎉 Comandante ${data.friend.name} é agora seu amigo mútuo! Vocês podem se desafiar via push.`);
+          showToast(`Comandante ${data.friend.name} agora é seu amigo mútuo.`);
         } else {
-          showToast(`⭐ Comandante ${data.friend.name} adicionado! Quando ele te adicionar de volta, vocês serão amigos mútuos.`);
+          showToast(`Comandante ${data.friend.name} adicionado (pendente recíproco).`);
         }
         const input = document.getElementById('input-add-friend-code');
         if (input) input.value = '';
         fetchAndRenderFriends();
       } else {
-        showToast(`⚠️ ${data.error || 'Erro ao adicionar amigo'}`);
+        showToast(data.error || 'Erro ao adicionar amigo');
       }
     } catch (err) {
       console.error('Erro ao adicionar amigo:', err);
@@ -1385,7 +1377,7 @@
 
   async function challengeFriend(targetCode) {
     window.tacticalAudio.click();
-    showToast(`📡 Enviando convite de batalha para ${targetCode}...`);
+    showToast(`Enviando convite de batalha para ${targetCode}...`);
 
     try {
       const res = await fetch('/api/friends/challenge', {
@@ -1399,7 +1391,7 @@
       });
       const data = await res.json();
       if (!data.success) {
-        showToast(`⚠️ ${data.error || 'Não foi possível enviar o desafio'}`);
+        showToast(data.error || 'Não foi possível enviar o desafio');
         return;
       }
 
@@ -1419,7 +1411,7 @@
       });
 
       window.tacticalAudio.sonarPing();
-      showToast(`🚀 Notificação enviada para ${targetCode}! Aguardando na sala ${data.roomCode}...`, 5000);
+      showToast(`Convite enviado para ${targetCode}! Aguardando na sala ${data.roomCode}...`, 5000);
     } catch (err) {
       console.error('Erro ao desafiar amigo:', err);
       showToast('Falha de conexão ao enviar desafio.');
@@ -1442,7 +1434,7 @@
       window.tacticalAudio.click();
       if (state.opponentFriendCode) {
         await addFriendByCode(state.opponentFriendCode);
-        btnBattleAddFriend.textContent = '✅ Amigo!';
+        btnBattleAddFriend.textContent = 'Adicionado';
       }
     });
   }
@@ -1453,7 +1445,7 @@
       window.tacticalAudio.click();
       if (state.opponentFriendCode) {
         await addFriendByCode(state.opponentFriendCode);
-        btnGameOverAddFriend.textContent = '✅ Amigo Adicionado!';
+        btnGameOverAddFriend.textContent = 'Amigo Adicionado';
       }
     });
   }
@@ -1495,7 +1487,7 @@
       window.tacticalAudio.click();
       if (!state.friendCode) return;
       navigator.clipboard.writeText(state.friendCode).then(() => {
-        showToast(`📋 Código ${state.friendCode} copiado!`);
+        showToast(`Código ${state.friendCode} copiado`);
       }).catch(() => {
         showToast(`Seu código é ${state.friendCode}`);
       });
@@ -1515,7 +1507,7 @@
         }).catch(() => {});
       } else {
         navigator.clipboard.writeText(shareUrl).then(() => {
-          showToast('📋 Link de convite copiado!');
+          showToast('Link de convite copiado');
         });
       }
     });
@@ -1644,7 +1636,7 @@
       deferredInstallPrompt.prompt();
       deferredInstallPrompt.userChoice.then((choice) => {
         if (choice.outcome === 'accepted') {
-          showToast('🎉 Aplicativo instalado com sucesso na sua tela inicial!');
+          showToast('Aplicativo instalado com sucesso na tela inicial.');
           if (btnInstallHeader) btnInstallHeader.style.display = 'none';
           if (lobbyInstallBox) lobbyInstallBox.style.display = 'none';
         }
@@ -1653,7 +1645,7 @@
     } else if (isIos()) {
       if (modalIosInstall) modalIosInstall.classList.add('active');
     } else {
-      showToast('Abra as opções do navegador (⋮) e toque em "Adicionar à tela inicial"');
+      showToast('Abra as opções do navegador e selecione "Adicionar à tela inicial"');
     }
   }
 
@@ -1667,7 +1659,7 @@
   }
 
   window.addEventListener('appinstalled', () => {
-    showToast('⚓ Batalha Naval instalada como aplicativo!');
+    showToast('Batalha Naval instalada como aplicativo.');
     if (btnInstallHeader) btnInstallHeader.style.display = 'none';
     if (lobbyInstallBox) lobbyInstallBox.style.display = 'none';
     updateInstallPushPromptUI();
@@ -1686,11 +1678,11 @@
 
     if (btnPromptInstall) {
       if (isInstalled) {
-        btnPromptInstall.textContent = '✅ Instalado';
+        btnPromptInstall.textContent = 'Instalado';
         btnPromptInstall.disabled = true;
         btnPromptInstall.className = 'btn-prompt-action completed';
       } else {
-        btnPromptInstall.textContent = isIos() ? 'Como Instalar 📲' : 'Instalar 📲';
+        btnPromptInstall.textContent = isIos() ? 'Como Instalar' : 'Instalar';
         btnPromptInstall.disabled = false;
         btnPromptInstall.className = 'btn-prompt-action btn-install';
       }
@@ -1698,11 +1690,11 @@
 
     if (btnPromptPush) {
       if (hasPush) {
-        btnPromptPush.textContent = '✅ Ativado';
+        btnPromptPush.textContent = 'Ativado';
         btnPromptPush.disabled = true;
         btnPromptPush.className = 'btn-prompt-action completed';
       } else {
-        btnPromptPush.textContent = 'Ativar 🔔';
+        btnPromptPush.textContent = 'Ativar';
         btnPromptPush.disabled = false;
         btnPromptPush.className = 'btn-prompt-action btn-push';
       }
@@ -1864,14 +1856,14 @@
 
     if (isBattle) {
       if (confirmLeaveTitle) confirmLeaveTitle.textContent = 'Abandonar Batalha?';
-      if (confirmLeaveDesc) confirmLeaveDesc.textContent = 'Uma batalha naval está em andamento. Se você sair ou voltar agora, a vitória será computada para o adversário por abandono!';
-      if (btnStayGame) btnStayGame.textContent = '⚓ Continuar Jogando';
-      if (btnConfirmLeave) btnConfirmLeave.textContent = '🚪 Abandonar Partida';
+      if (confirmLeaveDesc) confirmLeaveDesc.textContent = 'A vitória será concedida ao adversário.';
+      if (btnStayGame) btnStayGame.textContent = 'Continuar Jogando';
+      if (btnConfirmLeave) btnConfirmLeave.textContent = 'Abandonar';
     } else {
-      if (confirmLeaveTitle) confirmLeaveTitle.textContent = 'Cancelar Partida?';
-      if (confirmLeaveDesc) confirmLeaveDesc.textContent = 'Você está posicionando sua frota. Se você sair ou voltar agora, a sala será desfeita.';
-      if (btnStayGame) btnStayGame.textContent = '⚓ Continuar Posicionando';
-      if (btnConfirmLeave) btnConfirmLeave.textContent = '🚪 Sair da Sala';
+      if (confirmLeaveTitle) confirmLeaveTitle.textContent = 'Cancelar Sala?';
+      if (confirmLeaveDesc) confirmLeaveDesc.textContent = 'O posicionamento atual será perdido.';
+      if (btnStayGame) btnStayGame.textContent = 'Continuar';
+      if (btnConfirmLeave) btnConfirmLeave.textContent = 'Sair';
     }
 
     window.tacticalAudio.click();

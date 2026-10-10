@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Batalha Naval High-Tech | Tactical Mobile Radar</title>
+  <title>Batalha Naval | Tactical Command</title>
   <meta name="theme-color" content="#040811">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Batalha Naval">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <meta name="apple-mobile-web-app-title" content="Batalha Naval">
-  <meta name="mobile-web-app-capable" content="yes">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -20,40 +20,55 @@
   <!-- Top Tactical HUD -->
   <header class="hud-header">
     <div class="brand">
-      <span class="brand-icon">⚓</span>
+      <svg class="brand-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="m12 12 7-7"/><circle cx="12" cy="12" r="2"/>
+      </svg>
       <span class="brand-title">Batalha Naval</span>
     </div>
     <div class="hud-actions">
-      <button id="btn-open-friends" class="icon-btn friends-btn" title="Amigos" aria-label="Comandantes Amigos">
-        <span class="btn-icon">👥</span><span class="btn-label">Amigos</span>
+      <button id="btn-open-friends" class="icon-btn friends-btn" title="Amigos" aria-label="Amigos">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="btn-label">Amigos</span>
       </button>
-      <button id="btn-open-ranking" class="icon-btn ranking-btn" title="Ranking" aria-label="Ranking Geral">
-        <span class="btn-icon">🏆</span><span class="btn-label">Ranking</span>
+      <button id="btn-open-ranking" class="icon-btn ranking-btn" title="Ranking" aria-label="Ranking">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8c-.55 0-1 .45-1 1v1h10v-1c0-.55-.45-1-1-1h-1c-.55 0-1-.45-1-1v-2.34"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+        </svg>
+        <span class="btn-label">Ranking</span>
       </button>
-      <button id="btn-install-app" class="icon-btn install-btn" style="display: none;" title="Instalar App" aria-label="Instalar no Dispositivo">
-        <span class="btn-icon">📲</span><span class="btn-label">Instalar</span>
+      <button id="btn-install-app" class="icon-btn install-btn" style="display: none;" title="Instalar" aria-label="Instalar">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span class="btn-label">Instalar</span>
       </button>
-      <button id="btn-mute" class="icon-btn" title="Alternar Som" aria-label="Alternar Som">
-        <span class="btn-icon">🔊</span><span class="btn-label">Som</span>
+      <button id="btn-mute" class="icon-btn" title="Som" aria-label="Som">
+        <span id="sound-icon-wrapper">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </span>
+        <span class="btn-label">Som</span>
       </button>
     </div>
   </header>
 
-  <!-- Turn & Battle Status Banner (HUD Ativo na Batalha) -->
+  <!-- Turn & Battle Status Banner -->
   <div id="hud-turn-banner" class="turn-banner" style="display: none;">
     <div class="turn-indicator-dot"></div>
     <div class="turn-banner-content">
-      <div id="turn-banner-main" class="turn-banner-title">⚓ Central Pronta</div>
+      <div id="turn-banner-main" class="turn-banner-title">CENTRAL PRONTA</div>
       <div id="turn-banner-sub" class="turn-banner-subtitle">Aguardando batalha</div>
     </div>
   </div>
 
-  <!-- Turn Announcement Splash (Overlay Animado na Troca de Turno) -->
+  <!-- Turn Announcement Splash -->
   <div id="turn-splash-overlay" class="turn-splash-overlay">
     <div id="turn-splash-card" class="turn-splash-card">
-      <div id="turn-splash-icon" class="turn-splash-icon">⚡</div>
-      <div id="turn-splash-title" class="turn-splash-title">SUA VEZ!</div>
-      <div id="turn-splash-desc" class="turn-splash-desc">Toque no radar inimigo</div>
+      <div id="turn-splash-title" class="turn-splash-title">SEU TURNO</div>
+      <div id="turn-splash-desc" class="turn-splash-desc">Selecione uma coordenada no radar</div>
     </div>
   </div>
 
@@ -63,35 +78,25 @@
     <!-- SCREEN 1: LOBBY -->
     <section id="screen-lobby" class="screen active">
       <div class="lobby-box">
-        <h1 class="lobby-hero-title">Radar Tático</h1>
 
         <div class="form-group">
           <label class="form-label" for="input-player-name">Comandante</label>
-          <input type="text" id="input-player-name" class="input-tactical" placeholder="Ex: Capitão Jack" maxlength="15" value="Comandante">
+          <input type="text" id="input-player-name" class="input-tactical" placeholder="Nome" maxlength="15" value="Comandante">
         </div>
 
         <div class="privacy-selector-wrapper">
-          <label class="form-label">Partida</label>
           <div class="privacy-toggle-group">
-            <div class="privacy-toggle-card active" id="btn-privacy-public">
-              <span class="privacy-icon">🌐</span>
-              <div class="privacy-text">
-                <strong>Pública</strong>
-                <small>Aberta no radar</small>
-              </div>
-            </div>
-            <div class="privacy-toggle-card" id="btn-privacy-private">
-              <span class="privacy-icon">🔒</span>
-              <div class="privacy-text">
-                <strong>Privada</strong>
-                <small>Com código direto</small>
-              </div>
-            </div>
+            <button type="button" class="privacy-toggle-card active" id="btn-privacy-public">
+              Pública
+            </button>
+            <button type="button" class="privacy-toggle-card" id="btn-privacy-private">
+              Privada
+            </button>
           </div>
         </div>
 
         <button id="btn-create-room" class="btn-primary">
-          <span>📡</span> Criar Sala
+          Criar Sala
         </button>
 
         <!-- LISTA DE BATALHAS PÚBLICAS EM ABERTO -->
@@ -102,69 +107,61 @@
               <strong>Salas Abertas</strong>
               <span id="badge-public-rooms-count" class="badge-rooms-count">0</span>
             </div>
-            <button id="btn-refresh-rooms" class="btn-refresh-rooms" title="Atualizar Radar" aria-label="Atualizar">🔄</button>
+            <button id="btn-refresh-rooms" class="btn-refresh-rooms" title="Atualizar" aria-label="Atualizar">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+              </svg>
+            </button>
           </div>
           <div id="public-rooms-container" class="open-rooms-list">
             <div class="rooms-loading-hint">Buscando salas...</div>
           </div>
         </div>
 
-        <div class="lobby-divider">
-          <span>OU ENTRE COM CÓDIGO</span>
-        </div>
-
         <div class="join-room-row">
-          <input type="text" id="input-room-code" class="input-tactical input-room-code" placeholder="CÓDIGO (EX: NAV4)" maxlength="6" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+          <input type="text" id="input-room-code" class="input-tactical input-room-code" placeholder="Código (ex: NAV4)" maxlength="6" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
           <button id="btn-join-room" class="btn-join-submit">
-            Entrar ⚡
+            Entrar
           </button>
         </div>
 
         <div class="lobby-quick-actions">
-          <button id="btn-lobby-friends" class="btn-chip-action" title="Amigos e Desafios Push">
-            <span>👥</span> Amigos
+          <button id="btn-lobby-friends" class="btn-chip-action" title="Amigos">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span>Amigos</span>
           </button>
-          <button id="btn-lobby-ranking" class="btn-chip-action" title="Quadro de Honra">
-            <span>🏆</span> Ranking
+          <button id="btn-lobby-ranking" class="btn-chip-action" title="Ranking">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8c-.55 0-1 .45-1 1v1h10v-1c0-.55-.45-1-1-1h-1c-.55 0-1-.45-1-1v-2.34"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+            </svg>
+            <span>Ranking</span>
           </button>
-        </div>
-
-        <!-- Install PWA Card in Lobby -->
-        <div id="lobby-install-box" class="lobby-install-card" style="display: none;">
-          <div class="install-info">
-            <span class="install-icon">📲</span>
-            <div class="install-text">
-              <strong>Instalar App</strong>
-              <p>Tela cheia e vibração tátil</p>
-            </div>
-          </div>
-          <button id="btn-lobby-install" class="btn-install-action">Instalar</button>
         </div>
       </div>
     </section>
 
-    <!-- SCREEN 2: WAITING HOST (QR CODE) -->
+    <!-- SCREEN 2: WAITING HOST -->
     <section id="screen-waiting-host" class="screen">
       <div class="lobby-box">
         <h2 class="lobby-hero-title">Aguardando Oponente</h2>
-        <p class="lobby-subtitle">Aponte a câmera para o QR Code ou passe o código:</p>
 
         <div class="room-badge" id="display-room-code">----</div>
-        <div id="waiting-privacy-badge" class="waiting-privacy-tag">🌐 Sala Pública</div>
+        <div id="waiting-privacy-badge" class="waiting-privacy-tag">Sala Pública</div>
 
         <div class="qr-container">
-          <img id="qr-img" class="qr-image" src="" alt="QR Code da Sala">
-        </div>
-
-        <div class="network-hint">
-          <span id="network-ip-display" style="color: var(--cyan); word-break: break-all;">Carregando...</span>
+          <img id="qr-img" class="qr-image" src="" alt="QR Code">
         </div>
 
         <button id="btn-copy-link" class="btn-secondary">
-          <span>📋</span> Copiar Link
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+          <span>Copiar Link</span>
         </button>
-        <button id="btn-cancel-waiting-room" class="btn-secondary" style="margin-top: 10px; border-color: rgba(255, 42, 85, 0.35); color: var(--red-danger);">
-          <span>🚪</span> Cancelar Sala
+        <button id="btn-cancel-waiting-room" class="btn-secondary" style="margin-top: 8px; border-color: rgba(255, 42, 85, 0.35); color: var(--red-danger);">
+          Cancelar Sala
         </button>
       </div>
     </section>
@@ -173,7 +170,7 @@
     <section id="screen-placement" class="screen">
       <div class="placement-header">
         <p class="placement-instructions" id="placement-status-text">
-          Toque no radar para posicionar sua frota
+          Posicione a frota (0/5)
         </p>
       </div>
 
@@ -190,12 +187,29 @@
       <!-- Placement Controls -->
       <div class="placement-actions">
         <div class="placement-quick-btns">
-          <button id="btn-rotate-ship" class="btn-secondary" title="Girar Orientação">🔄 Girar (H)</button>
-          <button id="btn-random-fleet" class="btn-secondary" title="Posicionamento Aleatório">🎲 Auto</button>
-          <button id="btn-clear-fleet" class="btn-secondary" title="Limpar Grade">🗑️ Limpar</button>
+          <button id="btn-rotate-ship" class="btn-secondary" title="Girar Orientação">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+            </svg>
+            <span>Girar (H)</span>
+          </button>
+          <button id="btn-random-fleet" class="btn-secondary" title="Posicionamento Automático">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l6.1 8.6c.8 1.1 2 1.7 3.3 1.7H22"/><path d="m18 22 4-4-4-4"/>
+            </svg>
+            <span>Auto</span>
+          </button>
+          <button id="btn-clear-fleet" class="btn-secondary" title="Limpar Tabuleiro">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+            <span>Limpar</span>
+          </button>
         </div>
-        <button id="btn-confirm-fleet" class="btn-primary btn-confirm-full" disabled>⚓ Pronto (0/5)</button>
-        <button id="btn-placement-leave" class="btn-text-link" style="color: var(--text-dim); font-size: 0.78rem; background: none; border: none; cursor: pointer; text-decoration: underline; margin-top: 4px; padding: 6px;">
+        <button id="btn-confirm-fleet" class="btn-primary btn-confirm-full" disabled>
+          Pronto (0/5)
+        </button>
+        <button id="btn-placement-leave" class="btn-text-link">
           Abandonar Sala
         </button>
       </div>
@@ -204,28 +218,28 @@
     <!-- SCREEN 4: BATTLE COMBAT -->
     <section id="screen-battle" class="screen">
 
-      <!-- Duel Score Bar (Placar de Confronto da Sessão) -->
+      <!-- Duel Score Bar -->
       <div id="duel-score-bar" class="duel-score-bar">
         <div class="duel-player-tag me">
           <span id="duel-my-name" class="duel-p-name">Você</span>
           <span id="duel-my-score" class="duel-p-score">0</span>
         </div>
-        <div class="duel-vs-badge">⚔️ VS</div>
+        <div class="duel-vs-badge">VS</div>
         <div class="duel-player-tag opp">
           <span id="duel-opp-score" class="duel-p-score">0</span>
           <span id="duel-opp-name" class="duel-p-name">Inimigo</span>
-          <button id="btn-battle-add-friend" class="btn-micro-friend" title="Adicionar aos amigos" style="display: none;">⭐ +Amigo</button>
-          <button id="btn-battle-surrender" class="btn-micro-surrender" title="Abandonar partida" aria-label="Abandonar partida">🏳️</button>
+          <button id="btn-battle-add-friend" class="btn-micro-friend" title="Adicionar amigo" style="display: none;">+Amigo</button>
+          <button id="btn-battle-surrender" class="btn-micro-surrender" title="Abandonar partida" aria-label="Abandonar partida">Desistir</button>
         </div>
       </div>
       
       <!-- Mobile Switch Tabs -->
       <div class="mobile-tabs">
         <button id="tab-attack" class="tab-btn active">
-          🎯 Ataque
+          Ataque
         </button>
         <button id="tab-defense" class="tab-btn">
-          🛡️ Defesa
+          Defesa
           <span id="badge-defense-alert" class="tab-badge">!</span>
         </button>
       </div>
@@ -242,14 +256,14 @@
         </div>
       </div>
 
-      <!-- Battle Boards (Side by Side on Desktop, Tabbed on Mobile) -->
+      <!-- Battle Boards -->
       <div class="battle-boards-desktop">
         
         <!-- ATTACK RADAR -->
         <div id="card-attack-radar" class="tactical-board-card radar-sweep">
           <div class="board-label-bar">
-            <span class="board-label">🎯 Radar Inimigo</span>
-            <span id="radar-status-badge" class="radar-status-badge badge-active">🟢 SUA VEZ</span>
+            <span class="board-label">Radar de Ataque</span>
+            <span id="radar-status-badge" class="radar-status-badge badge-active">SUA VEZ</span>
           </div>
           <div id="attack-grid" class="grid-container"></div>
         </div>
@@ -257,7 +271,7 @@
         <!-- DEFENSE RADAR -->
         <div id="card-defense-fleet" class="tactical-board-card" style="display: none;">
           <div class="board-label-bar">
-            <span class="board-label">🛡️ Sua Frota</span>
+            <span class="board-label">Sua Frota</span>
           </div>
           <div id="defense-grid" class="grid-container"></div>
         </div>
@@ -272,41 +286,41 @@
   <div id="modal-game-over" class="modal-overlay">
     <div class="modal-card">
       <h2 id="modal-title" class="modal-title">Fim de Jogo</h2>
-      <p id="modal-subtitle" class="lobby-subtitle">Resultado da Batalha Naval</p>
+      <p id="modal-subtitle" class="lobby-subtitle"></p>
 
       <div class="stats-grid">
         <div class="stat-item">
           <div id="stat-shots" class="stat-val">0</div>
-          <div class="stat-lbl">Tiros Disparados</div>
+          <div class="stat-lbl">Disparos</div>
         </div>
         <div class="stat-item">
           <div id="stat-hits" class="stat-val">0</div>
-          <div class="stat-lbl">Acertos Certeiros</div>
+          <div class="stat-lbl">Acertos</div>
         </div>
         <div class="stat-item" style="grid-column: span 2;">
           <div id="stat-accuracy" class="stat-val">0%</div>
-          <div class="stat-lbl">Precisão dos Mísseis</div>
+          <div class="stat-lbl">Precisão</div>
         </div>
       </div>
 
       <!-- Placar da Sessão no Game Over -->
       <div id="gameover-duel-box" class="gameover-duel-card">
-        <span class="gameover-duel-label">⚔️ Placar da Batalha nesta Sala</span>
+        <span class="gameover-duel-label">Placar da Sessão</span>
         <div id="gameover-duel-text" class="gameover-duel-val">Você 0 x 0 Inimigo</div>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
         <button id="btn-rematch" class="btn-primary">
-          🔄 Revanche Rápida
+          Revanche
         </button>
         <button id="btn-gameover-add-friend" class="btn-secondary" style="border-color: rgba(0, 240, 255, 0.4); color: var(--cyan); display: none;">
-          <span>⭐</span> Adicionar Adversário aos Amigos
+          Adicionar aos Amigos
         </button>
         <button id="btn-gameover-ranking" class="btn-secondary" style="border-color: rgba(255, 215, 0, 0.4); color: #ffd700;">
-          🏆 Ver Ranking Geral
+          Ranking Geral
         </button>
         <button id="btn-gameover-lobby" class="btn-secondary" style="border-color: rgba(0, 240, 255, 0.35);">
-          <span>🏠</span> Voltar ao Lobby
+          Voltar ao Lobby
         </button>
       </div>
     </div>
@@ -315,7 +329,7 @@
   <!-- MODAL: Comandantes Amigos & Notificações Push -->
   <div id="modal-friends" class="modal-overlay">
     <div class="modal-card modal-friends-card">
-      <h2 class="modal-title" style="color: var(--cyan); font-size: 1.3rem;">👥 Amigos & Desafios</h2>
+      <h2 class="modal-title" style="color: var(--cyan); font-size: 1.25rem;">Amigos & Desafios</h2>
 
       <!-- Player Friend Code Box -->
       <div class="my-friend-code-card">
@@ -326,18 +340,17 @@
           </div>
         </div>
         <div class="code-actions">
-          <button id="btn-copy-friend-code" class="btn-code-action" title="Copiar Código">📋 Copiar</button>
-          <button id="btn-share-friend-code" class="btn-code-action" title="Compartilhar Link">📲 Convidar</button>
+          <button id="btn-copy-friend-code" class="btn-code-action" title="Copiar">Copiar</button>
+          <button id="btn-share-friend-code" class="btn-code-action" title="Convidar">Convidar</button>
         </div>
       </div>
 
       <!-- Push Notification Status & Enable Button -->
       <div id="push-status-box" class="push-status-card">
         <div class="push-status-info">
-          <span id="push-status-icon" class="push-status-icon">🔔</span>
           <div>
             <strong id="push-status-title">Alertas Push</strong>
-            <p id="push-status-desc">Receba convites de amigos em segundo plano.</p>
+            <p id="push-status-desc">Convites em segundo plano</p>
           </div>
         </div>
         <button id="btn-enable-push" class="btn-push-action">Ativar</button>
@@ -346,17 +359,17 @@
       <!-- Add Friend by Code Form -->
       <div class="add-friend-form">
         <input type="text" id="input-add-friend-code" class="input-tactical" placeholder="CÓDIGO (CMD-...)" maxlength="10" autocomplete="off" autocapitalize="characters">
-        <button id="btn-submit-add-friend" class="btn-primary" style="white-space: nowrap; padding: 10px 14px;">➕ Adicionar</button>
+        <button id="btn-submit-add-friend" class="btn-primary" style="white-space: nowrap; padding: 10px 14px;">Adicionar</button>
       </div>
 
       <!-- Friends List -->
       <div class="friends-list-header">
-        <span class="friends-list-title">Lista de Amigos</span>
+        <span class="friends-list-title">Amigos</span>
         <span id="friends-count-badge" class="friends-count-badge">0</span>
       </div>
       <div class="friends-list-wrapper">
         <div id="friends-list-container" class="friends-list">
-          <div class="friends-empty-hint">Nenhum amigo adicionado ainda. Compartilhe seu código acima!</div>
+          <div class="friends-empty-hint">Nenhum amigo adicionado ainda.</div>
         </div>
       </div>
 
@@ -366,19 +379,19 @@
     </div>
   </div>
 
-  <!-- MODAL: Ranking Geral de Comandantes -->
+  <!-- MODAL: Ranking Geral -->
   <div id="modal-ranking" class="modal-overlay">
     <div class="modal-card modal-ranking-card">
-      <h2 class="modal-title" style="color: #ffd700; font-size: 1.35rem;">🏆 Quadro de Honra</h2>
+      <h2 class="modal-title" style="color: #ffd700; font-size: 1.25rem;">Quadro de Honra</h2>
 
       <div class="ranking-table-wrapper">
         <table class="ranking-table">
           <thead>
             <tr>
-              <th style="width: 32px;">#</th>
+              <th style="width: 36px;">Pos</th>
               <th>Comandante</th>
-              <th>Vit.</th>
-              <th>Der.</th>
+              <th>Vit</th>
+              <th>Der</th>
               <th>%</th>
               <th>Mira</th>
             </tr>
@@ -386,7 +399,7 @@
           <tbody id="ranking-table-body">
             <tr>
               <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 18px;">
-                Carregando dados...
+                Carregando...
               </td>
             </tr>
           </tbody>
@@ -405,64 +418,56 @@
       <button id="btn-close-install-push-x" class="modal-close-x" aria-label="Fechar">&times;</button>
       
       <div class="install-push-header">
-        <span class="install-push-badge">⚡ EXPERIÊNCIA COMPLETA</span>
-        <h2 class="modal-title" style="color: var(--cyan); font-size: 1.25rem; margin-top: 6px;">
-          Batalha Naval no Celular
+        <span class="install-push-badge">CONFIGURAÇÃO</span>
+        <h2 class="modal-title" style="color: var(--cyan); font-size: 1.2rem; margin-top: 6px;">
+          Instalação e Alertas
         </h2>
-        <p class="install-push-desc">
-          Instale o app e ative alertas para ser chamado por amigos a qualquer momento.
-        </p>
       </div>
 
       <div class="install-push-items">
-        <!-- Item 1: App na Tela Inicial -->
         <div class="install-push-item" id="item-prompt-install">
-          <div class="item-icon-box">📲</div>
           <div class="item-text-box">
-            <strong>App na Tela Inicial</strong>
-            <small>Tela cheia e resposta tátil nativa</small>
+            <strong>Instalar App</strong>
+            <small>Acesso direto na tela inicial</small>
           </div>
           <button id="btn-prompt-install" class="btn-prompt-action btn-install">
-            Instalar 📲
+            Instalar
           </button>
         </div>
 
-        <!-- Item 2: Notificações Push -->
         <div class="install-push-item" id="item-prompt-push">
-          <div class="item-icon-box">🔔</div>
           <div class="item-text-box">
-            <strong>Alertas de Batalha</strong>
-            <small>Receba chamados de amigos e turnos</small>
+            <strong>Alertas Push</strong>
+            <small>Notificações de convites e turnos</small>
           </div>
           <button id="btn-prompt-push" class="btn-prompt-action btn-push">
-            Ativar 🔔
+            Ativar
           </button>
         </div>
       </div>
 
       <div class="install-push-footer">
         <button id="btn-dismiss-install-push" class="btn-dismiss-prompt">
-          Continuar no navegador
+          Agora não
         </button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Confirmação de Abandono de Jogo (Anti-Saída Acidental) -->
+  <!-- MODAL: Confirmação de Abandono de Jogo -->
   <div id="modal-confirm-leave" class="modal-overlay">
     <div class="modal-card modal-confirm-leave-card">
-      <div class="confirm-leave-icon">⚠️</div>
-      <h2 id="confirm-leave-title" class="modal-title" style="color: var(--orange-warn); font-size: 1.3rem;">Abandonar Batalha?</h2>
-      <p id="confirm-leave-desc" class="lobby-subtitle" style="margin-top: 8px; margin-bottom: 22px;">
-        Uma partida está em andamento. Se você sair ou voltar agora, a vitória será do adversário.
+      <h2 id="confirm-leave-title" class="modal-title" style="color: var(--orange-warn); font-size: 1.2rem;">Abandonar Partida?</h2>
+      <p id="confirm-leave-desc" class="lobby-subtitle" style="margin-top: 8px; margin-bottom: 20px;">
+        Se você sair agora, a vitória será do adversário.
       </p>
       
       <div class="confirm-leave-actions" style="display: flex; flex-direction: column; gap: 10px;">
         <button id="btn-stay-game" class="btn-primary btn-stay-tactical">
-          ⚓ Continuar Jogando
+          Continuar Jogando
         </button>
         <button id="btn-confirm-leave" class="btn-secondary btn-danger-leave">
-          🚪 Abandonar Partida
+          Abandonar
         </button>
       </div>
     </div>
@@ -471,26 +476,21 @@
   <!-- MODAL: Instalação no iOS (Safari) -->
   <div id="modal-ios-install" class="modal-overlay">
     <div class="modal-card">
-      <h2 class="modal-title" style="color: var(--cyan); font-size: 1.35rem;">Instalar no iPhone / iPad</h2>
-      <p class="lobby-subtitle" style="margin-bottom: 16px;">Siga os passos abaixo no Safari:</p>
+      <h2 class="modal-title" style="color: var(--cyan); font-size: 1.25rem;">Instalar no iPhone</h2>
       
       <div class="ios-steps">
         <div class="ios-step-item">
           <span class="ios-step-num">1</span>
-          <span>Toque no botão <strong>Compartilhar</strong> (ícone <strong style="font-size: 1.1rem;">⎋</strong> ou quadrado com seta para cima) na barra inferior do Safari.</span>
+          <span>Toque no botão <strong>Compartilhar</strong> na barra do Safari.</span>
         </div>
         <div class="ios-step-item">
           <span class="ios-step-num">2</span>
-          <span>Role a lista para baixo e toque em <strong>"Adicionar à Tela de Início"</strong> (ícone <strong style="font-size: 1.1rem;">➕</strong>).</span>
-        </div>
-        <div class="ios-step-item">
-          <span class="ios-step-num">3</span>
-          <span>Toque em <strong>"Adicionar"</strong> no canto superior direito para instalar!</span>
+          <span>Role e selecione <strong>Adicionar à Tela de Início</strong>.</span>
         </div>
       </div>
 
       <button id="btn-close-ios-modal" class="btn-primary" style="margin-top: 18px;">
-        Entendido!
+        Fechar
       </button>
     </div>
   </div>
