@@ -1158,6 +1158,7 @@
       btn.textContent = 'Ativar';
       btn.disabled = false;
     }
+    updateInstallPushPromptUI();
   }
 
   async function checkPushSubscription() {
@@ -1650,6 +1651,139 @@
     showToast('⚓ Batalha Naval instalada como aplicativo!');
     if (btnInstallHeader) btnInstallHeader.style.display = 'none';
     if (lobbyInstallBox) lobbyInstallBox.style.display = 'none';
+    updateInstallPushPromptUI();
   });
+
+  // --- POPUP NOTIFICAÇÃO: INSTALAR APP & ATIVAR PUSH ---
+  const modalInstallPush = document.getElementById('modal-install-push-prompt');
+  const btnCloseInstallPushX = document.getElementById('btn-close-install-push-x');
+  const btnDismissInstallPush = document.getElementById('btn-dismiss-install-push');
+  const btnPromptInstall = document.getElementById('btn-prompt-install');
+  const btnPromptPush = document.getElementById('btn-prompt-push');
+
+  function updateInstallPushPromptUI() {
+    const isInstalled = isInStandaloneMode();
+    const hasPush = state.pushEnabled;
+
+    if (btnPromptInstall) {
+      if (isInstalled) {
+        btnPromptInstall.textContent = '✅ Instalado';
+        btnPromptInstall.disabled = true;
+        btnPromptInstall.className = 'btn-prompt-action completed';
+      } else {
+        btnPromptInstall.textContent = isIos() ? 'Como Instalar 📲' : 'Instalar 📲';
+        btnPromptInstall.disabled = false;
+        btnPromptInstall.className = 'btn-prompt-action btn-install';
+      }
+    }
+
+    if (btnPromptPush) {
+      if (hasPush) {
+        btnPromptPush.textContent = '✅ Ativado';
+        btnPromptPush.disabled = true;
+        btnPromptPush.className = 'btn-prompt-action completed';
+      } else {
+        btnPromptPush.textContent = 'Ativar 🔔';
+        btnPromptPush.disabled = false;
+        btnPromptPush.className = 'btn-prompt-action btn-push';
+      }
+    }
+  }
+
+  function openInstallPushPrompt(forced = false) {
+    if (!modalInstallPush) return;
+    const isInstalled = isInStandaloneMode();
+    const hasPush = state.pushEnabled;
+
+    if (!forced && isInstalled && hasPush) return;
+
+    updateInstallPushPromptUI();
+    modalInstallPush.classList.add('active');
+  }
+
+  function dismissInstallPushPrompt() {
+    if (!modalInstallPush) return;
+    modalInstallPush.classList.remove('active');
+    // Salva horário de dispensa (não perguntar novamente por 24 horas)
+    localStorage.setItem('naval_install_push_dismissed_at', Date.now().toString());
+  }
+
+  if (btnCloseInstallPushX) {
+    btnCloseInstallPushX.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      dismissInstallPushPrompt();
+    });
+  }
+
+  if (btnDismissInstallPush) {
+    btnDismissInstallPush.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      dismissInstallPushPrompt();
+    });
+  }
+
+  if (modalInstallPush) {
+    modalInstallPush.addEventListener('click', (e) => {
+      if (e.target === modalInstallPush) {
+        dismissInstallPushPrompt();
+      }
+    });
+  }
+
+  if (btnPromptInstall) {
+    btnPromptInstall.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      if (isIos()) {
+        if (modalIosInstall) modalIosInstall.classList.add('active');
+      } else {
+        triggerInstall();
+      }
+      setTimeout(updateInstallPushPromptUI, 800);
+    });
+  }
+
+  if (btnPromptPush) {
+    btnPromptPush.addEventListener('click', async () => {
+      await subscribeToPushNotifications();
+      updateInstallPushPromptUI();
+      if (state.pushEnabled) {
+        setTimeout(() => {
+          if (isInStandaloneMode()) {
+            modalInstallPush.classList.remove('active');
+          }
+        }, 1200);
+      }
+    });
+  }
+
+  // Abre o popup completo ao tocar no botão de instalar do header ou lobby
+  if (btnInstallHeader) {
+    btnInstallHeader.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openInstallPushPrompt(true);
+    });
+  }
+  if (btnLobbyInstall) {
+    btnLobbyInstall.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openInstallPushPrompt(true);
+    });
+  }
+
+  // Disparo automático suave no Lobby após carregar a página
+  setTimeout(() => {
+    if (screens.lobby && screens.lobby.classList.contains('active')) {
+      const dismissedAt = parseInt(localStorage.getItem('naval_install_push_dismissed_at') || '0', 10);
+      const oneDay = 24 * 60 * 60 * 1000;
+      const isRecentlyDismissed = Date.now() - dismissedAt < oneDay;
+
+      const isInstalled = isInStandaloneMode();
+      const hasPush = state.pushEnabled;
+
+      if (!isRecentlyDismissed && (!isInstalled || !hasPush)) {
+        openInstallPushPrompt(false);
+      }
+    }
+  }, 2200);
 
 })();

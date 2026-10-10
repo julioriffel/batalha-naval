@@ -1039,6 +1039,164 @@ body {
   to { transform: scale(1); opacity: 1; }
 }
 
+/* Modal Close X */
+.modal-close-x {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s;
+  z-index: 10;
+}
+
+.modal-close-x:hover {
+  color: #fff;
+}
+
+/* Modal Popup: Install & Push Prompt */
+.modal-install-push-card {
+  position: relative;
+  background: linear-gradient(180deg, #091322 0%, #050c18 100%);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.25), 0 10px 40px rgba(0, 0, 0, 0.8);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px 18px;
+  max-width: 440px;
+  width: 92%;
+  text-align: center;
+}
+
+.install-push-badge {
+  display: inline-block;
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+
+.install-push-desc {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin: 6px 0 16px;
+  line-height: 1.35;
+}
+
+.install-push-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.install-push-item {
+  background: var(--bg-surface);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s;
+}
+
+.install-push-item:hover {
+  border-color: rgba(0, 240, 255, 0.5);
+  background: rgba(15, 28, 51, 0.85);
+}
+
+.item-icon-box {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 240, 255, 0.1);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-text-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-text-box strong {
+  font-size: 0.88rem;
+  color: var(--text-main);
+}
+
+.item-text-box small {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.2;
+}
+
+.btn-prompt-action {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-prompt-action.btn-install {
+  background: linear-gradient(135deg, #00ffaa, #00b377);
+  color: #040811;
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.3);
+}
+
+.btn-prompt-action.btn-push {
+  background: linear-gradient(135deg, #00f0ff, #0077ff);
+  color: #040811;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.btn-prompt-action.completed {
+  background: rgba(0, 255, 136, 0.15) !important;
+  border: 1px solid rgba(0, 255, 136, 0.4) !important;
+  color: #00ff88 !important;
+  box-shadow: none !important;
+  cursor: default;
+}
+
+.btn-dismiss-prompt {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 6px 12px;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.btn-dismiss-prompt:hover {
+  color: var(--text-main);
+}
+
 .modal-title {
   font-size: 1.8rem;
   font-weight: 900;

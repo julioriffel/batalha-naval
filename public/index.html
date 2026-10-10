@@ -391,6 +391,55 @@
     </div>
   </div>
 
+  <!-- MODAL POPUP: Instalação do App & Notificações Push -->
+  <div id="modal-install-push-prompt" class="modal-overlay">
+    <div class="modal-card modal-install-push-card">
+      <button id="btn-close-install-push-x" class="modal-close-x" aria-label="Fechar">&times;</button>
+      
+      <div class="install-push-header">
+        <span class="install-push-badge">⚡ EXPERIÊNCIA COMPLETA</span>
+        <h2 class="modal-title" style="color: var(--cyan); font-size: 1.25rem; margin-top: 6px;">
+          Batalha Naval no Celular
+        </h2>
+        <p class="install-push-desc">
+          Instale o app e ative alertas para ser chamado por amigos a qualquer momento.
+        </p>
+      </div>
+
+      <div class="install-push-items">
+        <!-- Item 1: App na Tela Inicial -->
+        <div class="install-push-item" id="item-prompt-install">
+          <div class="item-icon-box">📲</div>
+          <div class="item-text-box">
+            <strong>App na Tela Inicial</strong>
+            <small>Tela cheia e resposta tátil nativa</small>
+          </div>
+          <button id="btn-prompt-install" class="btn-prompt-action btn-install">
+            Instalar 📲
+          </button>
+        </div>
+
+        <!-- Item 2: Notificações Push -->
+        <div class="install-push-item" id="item-prompt-push">
+          <div class="item-icon-box">🔔</div>
+          <div class="item-text-box">
+            <strong>Alertas de Batalha</strong>
+            <small>Receba chamados de amigos e turnos</small>
+          </div>
+          <button id="btn-prompt-push" class="btn-prompt-action btn-push">
+            Ativar 🔔
+          </button>
+        </div>
+      </div>
+
+      <div class="install-push-footer">
+        <button id="btn-dismiss-install-push" class="btn-dismiss-prompt">
+          Continuar no navegador
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Instalação no iOS (Safari) -->
   <div id="modal-ios-install" class="modal-overlay">
     <div class="modal-card">
