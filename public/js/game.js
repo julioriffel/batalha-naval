@@ -1010,7 +1010,7 @@
     } else {
       hudTurnBanner.className = 'turn-banner opponent-turn';
       if (titleEl) titleEl.textContent = `TURNO: ${activePlayerName.toUpperCase()}`;
-      if (subEl) subEl.textContent = 'Aguardando oponente...';
+      if (subEl) subEl.textContent = state.isBotMatch ? 'Aguardando disparo da IA...' : 'Aguardando oponente...';
 
       if (radarBadge) {
         radarBadge.textContent = 'BLOQUEADO';
@@ -1734,9 +1734,12 @@
     const btnBattleAddFriend = document.getElementById('btn-battle-add-friend');
     const btnGameOverAddFriend = document.getElementById('btn-gameover-add-friend');
 
-    if (state.opponentFriendCode && state.opponentFriendCode !== state.friendCode) {
+    if (!state.isBotMatch && state.opponentFriendCode && state.opponentFriendCode !== state.friendCode) {
       if (btnBattleAddFriend) btnBattleAddFriend.style.display = 'inline-block';
       if (btnGameOverAddFriend) btnGameOverAddFriend.style.display = 'block';
+    } else {
+      if (btnBattleAddFriend) btnBattleAddFriend.style.display = 'none';
+      if (btnGameOverAddFriend) btnGameOverAddFriend.style.display = 'none';
     }
   }
 
@@ -1896,13 +1899,18 @@
 
   // --- PWA SERVICE WORKER & INSTALAÇÃO ---
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    const registerSW = () => {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
         console.log('[PWA] Service Worker tático registrado com sucesso:', reg.scope);
       }).catch((err) => {
         console.warn('[PWA] Falha ao registrar Service Worker:', err);
       });
-    });
+    };
+    if (document.readyState === 'complete') {
+      registerSW();
+    } else {
+      window.addEventListener('load', registerSW);
+    }
   }
 
   let deferredInstallPrompt = null;
@@ -1911,6 +1919,8 @@
   const btnLobbyInstall = document.getElementById('btn-lobby-install');
   const modalIosInstall = document.getElementById('modal-ios-install');
   const btnCloseIosModal = document.getElementById('btn-close-ios-modal');
+  const modalAndroidInstall = document.getElementById('modal-android-install');
+  const btnCloseAndroidModal = document.getElementById('btn-close-android-modal');
 
   const isIos = () => {
     const ua = window.navigator.userAgent.toLowerCase();
@@ -1922,12 +1932,10 @@
            window.matchMedia('(display-mode: standalone)').matches;
   };
 
-  // Se for iOS e não estiver em modo app instalado, exibe botão de instruções
+  // Se não estiver em modo app instalado, exibe botão no HUD
   if (!isInStandaloneMode()) {
-    if (isIos()) {
-      if (btnInstallHeader) btnInstallHeader.style.display = 'flex';
-      if (lobbyInstallBox) lobbyInstallBox.style.display = 'flex';
-    }
+    if (btnInstallHeader) btnInstallHeader.style.display = 'flex';
+    if (lobbyInstallBox) lobbyInstallBox.style.display = 'flex';
   }
 
   // Captura o prompt de instalação nativo no Android/Chrome/Edge
@@ -1938,6 +1946,7 @@
       if (btnInstallHeader) btnInstallHeader.style.display = 'flex';
       if (lobbyInstallBox) lobbyInstallBox.style.display = 'flex';
     }
+    updateInstallPushPromptUI();
   });
 
   function triggerInstall() {
@@ -1951,22 +1960,46 @@
           showToast('Aplicativo instalado com sucesso na tela inicial.');
           if (btnInstallHeader) btnInstallHeader.style.display = 'none';
           if (lobbyInstallBox) lobbyInstallBox.style.display = 'none';
+          if (modalInstallPush) modalInstallPush.classList.remove('active');
+          if (modalAndroidInstall) modalAndroidInstall.classList.remove('active');
         }
         deferredInstallPrompt = null;
+        updateInstallPushPromptUI();
       });
     } else if (isIos()) {
       if (modalIosInstall) modalIosInstall.classList.add('active');
     } else {
-      showToast('Abra as opções do navegador e selecione "Adicionar à tela inicial"');
+      if (modalAndroidInstall) {
+        modalAndroidInstall.classList.add('active');
+      } else {
+        openInstallPushPrompt(true);
+        showToast('No Chrome: toque nos 3 pontinhos (⋮) e selecione "Instalar aplicativo"', 5000);
+      }
     }
   }
 
-  if (btnInstallHeader) btnInstallHeader.addEventListener('click', triggerInstall);
-  if (btnLobbyInstall) btnLobbyInstall.addEventListener('click', triggerInstall);
+  if (btnInstallHeader) {
+    btnInstallHeader.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerInstall();
+    });
+  }
+  if (btnLobbyInstall) {
+    btnLobbyInstall.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerInstall();
+    });
+  }
   if (btnCloseIosModal) {
     btnCloseIosModal.addEventListener('click', () => {
       window.tacticalAudio.click();
       if (modalIosInstall) modalIosInstall.classList.remove('active');
+    });
+  }
+  if (btnCloseAndroidModal) {
+    btnCloseAndroidModal.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      if (modalAndroidInstall) modalAndroidInstall.classList.remove('active');
     });
   }
 
@@ -2079,19 +2112,6 @@
     });
   }
 
-  // Abre o popup completo ao tocar no botão de instalar do header ou lobby
-  if (btnInstallHeader) {
-    btnInstallHeader.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openInstallPushPrompt(true);
-    });
-  }
-  if (btnLobbyInstall) {
-    btnLobbyInstall.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openInstallPushPrompt(true);
-    });
-  }
 
   // Disparo automático suave no Lobby após carregar a página
   setTimeout(() => {
@@ -2128,6 +2148,7 @@
     state.battle.enemySunkCount = 0;
     state.battle.mySunkCount = 0;
     state.battle.isMyTurn = false;
+    state.isBotMatch = false;
 
     if (modalGameOver) modalGameOver.classList.remove('active');
     if (modalConfirmLeave) modalConfirmLeave.classList.remove('active');

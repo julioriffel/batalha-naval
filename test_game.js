@@ -446,6 +446,128 @@ async function runTest() {
   ws1.close();
   ws2.close();
 
+  // 8. Testar Modo Jogar contra BOT (IA)
+  console.log('\n🤖 Testando modo Batalha Naval contra BOT (IA)...');
+  const wsBotPlayer = new WebSocket(`ws://localhost:${PORT}`);
+  await new Promise(res => wsBotPlayer.on('open', res));
+
+  const botRoomCreated = new Promise((resolve, reject) => {
+    let gotPlacement = false;
+    let gotCreated = false;
+    wsBotPlayer.on('message', m => {
+      const d = JSON.parse(m.toString());
+      if (d.type === 'room_created') {
+        if (!d.isBot) return reject(new Error('Partida de bot não marcou isBot === true'));
+        gotCreated = true;
+      }
+      if (d.type === 'start_placement') {
+        if (!d.isBot) return reject(new Error('start_placement não marcou isBot === true'));
+        gotPlacement = true;
+      }
+      if (gotCreated && gotPlacement) resolve();
+    });
+  });
+
+  wsBotPlayer.send(JSON.stringify({
+    type: 'create_bot_game',
+    playerName: 'Comandante Humano',
+    difficulty: 'medium'
+  }));
+  await botRoomCreated;
+  console.log('✅ Sala contra BOT criada e iniciada diretamente na fase de posicionamento');
+
+  // Submeter frota do jogador humano
+  const botBattleStarted = new Promise(resolve => {
+    wsBotPlayer.on('message', m => {
+      const d = JSON.parse(m.toString());
+      if (d.type === 'battle_started') {
+        resolve(d);
+      }
+    });
+  });
+
+  wsBotPlayer.send(JSON.stringify({
+    type: 'submit_fleet',
+    ships: fleetP1
+  }));
+
+  const botBattleData = await botBattleStarted;
+  console.log(`✅ Batalha contra BOT iniciada! (Turno inicial: ${botBattleData.activePlayerName})`);
+
+  // Se o turno inicial for do BOT, aguarda o disparo da IA; se for do humano, humano atira primeiro
+  if (botBattleData.isYourTurn) {
+    console.log('👉 Humano atira primeiro no radar do BOT...');
+    const botShotPromise = new Promise(resolve => {
+      wsBotPlayer.on('message', m => {
+        const d = JSON.parse(m.toString());
+        if (d.type === 'shot_result' && d.role === 'defender') {
+          // Disparo feito pelo BOT como resposta
+          resolve(d);
+        }
+      });
+    });
+    // Atira em (9, 9)
+    wsBotPlayer.send(JSON.stringify({ type: 'fire', row: 9, col: 9 }));
+    // Aguarda resposta do BOT se o humano errou (ou se acertou, humano pode atirar até errar)
+    // Para simplificar, atira em posições vazias (9,9) ou (9,8)
+    const botShot = await Promise.race([
+      botShotPromise,
+      new Promise(resolve => setTimeout(resolve, 3000))
+    ]);
+    if (botShot) {
+      console.log(`✅ BOT realizou disparo tático em (${botShot.target.row}, ${botShot.target.col})!`);
+    } else {
+      console.log('✅ Tiro do humano processado.');
+    }
+  } else {
+    console.log('👉 Aguardando primeiro disparo tático do BOT...');
+    const botInitialShot = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout aguardando tiro do BOT')), 4000);
+      wsBotPlayer.on('message', m => {
+        const d = JSON.parse(m.toString());
+        if (d.type === 'shot_result' && d.role === 'defender') {
+          clearTimeout(timeout);
+          resolve(d);
+        }
+      });
+    });
+    console.log(`✅ BOT disparou em (${botInitialShot.target.row}, ${botInitialShot.target.col}) com sucesso!`);
+  }
+
+  // Testar rendição na partida contra bot
+  const botSurrenderPromise = new Promise(resolve => {
+    wsBotPlayer.on('message', m => {
+      const d = JSON.parse(m.toString());
+      if (d.type === 'surrender_acknowledged') {
+        resolve();
+      }
+    });
+  });
+  wsBotPlayer.send(JSON.stringify({ type: 'surrender' }));
+  await botSurrenderPromise;
+  console.log('✅ Desistência contra BOT concluída com sucesso!');
+
+  // Testar revanche contra o BOT
+  const botRematchPromise = new Promise((resolve, reject) => {
+    let accepted = false;
+    let placement = false;
+    const timeout = setTimeout(() => reject(new Error('Timeout na revanche contra BOT')), 3000);
+    wsBotPlayer.on('message', m => {
+      const d = JSON.parse(m.toString());
+      if (d.type === 'rematch_accepted') accepted = true;
+      if (d.type === 'start_placement') placement = true;
+      if (accepted && placement) {
+        clearTimeout(timeout);
+        resolve();
+      }
+    });
+  });
+  wsBotPlayer.send(JSON.stringify({ type: 'request_rematch' }));
+  await botRematchPromise;
+  console.log('✅ Revanche contra BOT aceita e iniciada imediatamente!');
+
+  wsBotPlayer.close();
+
   console.log('🎉 TODOS OS TESTES PASSARAM COM SUCESSO!\n');
   process.exit(0);
 }
