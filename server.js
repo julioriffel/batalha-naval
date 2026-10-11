@@ -687,9 +687,13 @@ function getPublicWaitingRooms() {
     // 2. Filtra estritamente jogadores com conexão WebSocket ativa e aberta
     const activePlayers = room.players.filter(p => p && p.ws && p.ws.readyState === WebSocket.OPEN);
 
-    // Se não há nenhum jogador conectado na sala, purga do servidor
+    // Se não há nenhum jogador conectado na sala:
     if (activePlayers.length === 0) {
-      toDelete.push(code);
+      const now = Date.now();
+      const oldestDisconnect = Math.min(...room.players.map(p => p.disconnectedAt || room.createdAt || now));
+      if (now - oldestDisconnect >= 60000) {
+        toDelete.push(code);
+      }
       continue;
     }
 
@@ -1148,6 +1152,137 @@ function broadcastPublicRooms() {
   });
 }
 
+async function handlePlayerReconnect(ws, room, player, payload = {}) {
+  if (!room || !player) return;
+
+  // Cancela timer de expiração de desconexão
+  if (player.disconnectTimer) {
+    clearTimeout(player.disconnectTimer);
+    player.disconnectTimer = null;
+  }
+
+  player.ws = ws;
+  player.disconnectedAt = null;
+
+  const playerIndex = room.players.indexOf(player);
+  const opponent = room.players.find(p => p.id !== player.id);
+
+  // Notificar adversário se estiver conectado
+  if (opponent && opponent.ws && opponent.ws.readyState === WebSocket.OPEN) {
+    send(opponent.ws, 'opponent_reconnected', {
+      opponentName: player.name,
+      message: `${player.name} reconectou à partida!`
+    });
+  }
+
+  if (room.isPublic && room.state === 'waiting') {
+    broadcastPublicRooms();
+  }
+
+  const origin = (payload.origin || '').replace(/\/$/, '') || `http://${LOCAL_IP}:${PORT}`;
+  const joinUrl = `${origin}/?sala=${room.code}`;
+
+  if (room.state === 'waiting') {
+    let qrDataUrl = '';
+    try {
+      qrDataUrl = await QRCode.toDataURL(joinUrl, {
+        width: 280,
+        margin: 2,
+        color: { dark: '#00f0ff', light: '#07101e' }
+      });
+    } catch (e) {
+      console.error('Erro gerando QR na reconexão:', e);
+    }
+
+    send(ws, 'room_created', {
+      roomCode: room.code,
+      playerId: player.id,
+      playerName: player.name,
+      friendCode: player.friendCode,
+      persistentId: player.persistentId,
+      isPublic: room.isPublic,
+      joinUrl,
+      qrDataUrl,
+      localIp: LOCAL_IP,
+      port: PORT,
+      isReconnected: true
+    });
+    return;
+  }
+
+  if (room.state === 'placement') {
+    send(ws, 'reconnect_placement', {
+      roomCode: room.code,
+      playerId: player.id,
+      playerName: player.name,
+      opponentName: opponent ? opponent.name : 'Adversário',
+      opponentFriendCode: opponent ? opponent.friendCode : null,
+      shipSpecs: SHIP_SPECS,
+      isBot: Boolean(room.isBotMatch),
+      isHost: playerIndex === 0,
+      ready: Boolean(player.ready),
+      ships: player.ships || []
+    });
+    return;
+  }
+
+  if (room.state === 'battle') {
+    const isTurn = room.players[room.currentTurnIndex].id === player.id;
+    const activePlayer = room.players[room.currentTurnIndex];
+
+    send(ws, 'battle_reconnected', {
+      roomCode: room.code,
+      playerId: player.id,
+      playerName: player.name,
+      opponentName: opponent ? opponent.name : 'Adversário',
+      opponentFriendCode: opponent ? opponent.friendCode : null,
+      isBot: Boolean(room.isBotMatch),
+      isHost: playerIndex === 0,
+      isYourTurn: isTurn,
+      activePlayerName: activePlayer ? activePlayer.name : 'Comandante',
+      myFleet: player.ships || [],
+      myHitsReceived: Array.from(player.hitsReceived || []),
+      myMissesReceived: Array.from(player.missesReceived || []),
+      opponentHitsReceived: opponent ? Array.from(opponent.hitsReceived || []) : [],
+      opponentMissesReceived: opponent ? Array.from(opponent.missesReceived || []) : [],
+      opponentSunkShips: opponent && Array.isArray(opponent.ships) ? opponent.ships.filter(s => s.sunk).map(s => ({
+        id: s.id,
+        name: s.name,
+        size: s.size,
+        coords: s.coords
+      })) : [],
+      sessionScore: {
+        myWins: room.scores ? (room.scores[player.id] || 0) : 0,
+        opponentWins: room.scores ? (room.scores[opponent ? opponent.id : ''] || 0) : 0,
+        opponentName: opponent ? opponent.name : 'Inimigo'
+      }
+    });
+
+    if (room.isBotMatch && activePlayer && activePlayer.isBot) {
+      scheduleBotTurn(room, 1200);
+    }
+    return;
+  }
+
+  if (room.state === 'gameover') {
+    send(ws, 'game_over', {
+      isWinner: room.winnerIndex === playerIndex,
+      winnerName: room.players[room.winnerIndex] ? room.players[room.winnerIndex].name : '',
+      shotsFired: player.shotsFired || 0,
+      hitsLanded: player.hitsLanded || 0,
+      accuracy: player.shotsFired > 0 ? Math.round((player.hitsLanded / player.shotsFired) * 100) : 0,
+      opponentFleet: opponent ? opponent.ships : [],
+      opponentFriendCode: opponent ? opponent.friendCode : null,
+      sessionScore: {
+        myWins: room.scores ? (room.scores[player.id] || 0) : 0,
+        opponentWins: room.scores ? (room.scores[opponent ? opponent.id : ''] || 0) : 0,
+        opponentName: opponent ? opponent.name : 'Inimigo'
+      }
+    });
+    return;
+  }
+}
+
 wss.on('connection', ws => {
   ws.isAlive = true;
   ws.friendCode = null;
@@ -1187,6 +1322,43 @@ wss.on('connection', ws => {
         if (friendCode) ws.friendCode = friendCode;
         if (persistentId) ws.persistentId = persistentId;
         return;
+      }
+
+      // 0.3 RECONECTAR A UMA SALA EXISTENTE
+      if (type === 'reconnect_room') {
+        const roomCode = (payload.roomCode || '').toUpperCase().trim();
+        const persistentId = (payload.persistentId || '').trim() || null;
+        const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
+        const playerId = (payload.playerId || '').trim() || null;
+        const room = rooms.get(roomCode);
+
+        if (!room) {
+          return send(ws, 'reconnect_failed', {
+            roomCode,
+            reason: 'room_not_found',
+            message: 'Sala não encontrada ou encerrada.'
+          });
+        }
+
+        const player = room.players.find(p => {
+          if (playerId && p.id === playerId) return true;
+          if (persistentId && p.persistentId && p.persistentId === persistentId) return true;
+          if (friendCode && p.friendCode && p.friendCode === friendCode) return true;
+          return false;
+        });
+
+        if (!player) {
+          return send(ws, 'reconnect_failed', {
+            roomCode,
+            canJoin: room.state === 'waiting' && room.players.length < 2,
+            reason: 'player_not_found',
+            message: 'Comandante não registrado nesta sala.'
+          });
+        }
+
+        currentPlayerId = player.id;
+        currentRoomCode = room.code;
+        return handlePlayerReconnect(ws, room, player, payload);
       }
 
       // 1. CRIAR SALA
@@ -1396,12 +1568,8 @@ wss.on('connection', ws => {
         if (!room) {
           return send(ws, 'error', { message: 'Sala não encontrada. Verifique o código.' });
         }
-        if (room.players.length >= 2) {
-          return send(ws, 'error', { message: 'Esta sala já está cheia com 2 jogadores.' });
-        }
-
-        // Validação: Impedir a entrada duas vezes do mesmo usuário na mesma sala
-        const isAlreadyInRoom = room.players.some(p => {
+        // Validação: Checar se o usuário já está nesta sala
+        const existingPlayer = room.players.find(p => {
           if (p.ws === ws) return true;
           if (currentPlayerId && p.id === currentPlayerId) return true;
           if (persistentId && p.persistentId && p.persistentId === persistentId) return true;
@@ -1409,10 +1577,21 @@ wss.on('connection', ws => {
           return false;
         });
 
-        if (isAlreadyInRoom) {
-          return send(ws, 'error', {
-            message: 'Você já está nesta sala! Não é permitido entrar duas vezes na mesma partida.'
-          });
+        if (existingPlayer) {
+          // Se o jogador já tem uma conexão WebSocket ativa nesta mesma sessão ou outra aba aberta
+          if (existingPlayer.ws && existingPlayer.ws.readyState === WebSocket.OPEN) {
+            return send(ws, 'error', {
+              message: 'Você já está nesta sala! Não é permitido entrar duas vezes na mesma partida.'
+            });
+          }
+          // Caso a conexão anterior esteja fechada, reconecta automaticamente o jogador existente
+          currentPlayerId = existingPlayer.id;
+          currentRoomCode = room.code;
+          return handlePlayerReconnect(ws, room, existingPlayer, payload);
+        }
+
+        if (room.players.length >= 2) {
+          return send(ws, 'error', { message: 'Esta sala já está cheia com 2 jogadores.' });
         }
 
         const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
@@ -1771,6 +1950,15 @@ wss.on('connection', ws => {
         const winner = room.players.find(p => p.id !== currentPlayerId);
         if (!forfeiter || !winner) return;
 
+        if (forfeiter.disconnectTimer) {
+          clearTimeout(forfeiter.disconnectTimer);
+          forfeiter.disconnectTimer = null;
+        }
+        if (winner.disconnectTimer) {
+          clearTimeout(winner.disconnectTimer);
+          winner.disconnectTimer = null;
+        }
+
         room.state = 'gameover';
         if (!room.scores) {
           room.scores = { [winner.id]: 0, [forfeiter.id]: 0 };
@@ -1824,6 +2012,12 @@ wss.on('connection', ws => {
 
         if (room.botTimeout) clearTimeout(room.botTimeout);
 
+        const player = room.players.find(p => p.id === currentPlayerId);
+        if (player && player.disconnectTimer) {
+          clearTimeout(player.disconnectTimer);
+          player.disconnectTimer = null;
+        }
+
         const wasPublic = room.isPublic;
         const remaining = room.players.filter(p => p.id !== currentPlayerId);
         if (remaining.length === 0) {
@@ -1858,28 +2052,58 @@ wss.on('connection', ws => {
 
     if (room.botTimeout) clearTimeout(room.botTimeout);
 
-    if (room.isBotMatch) {
-      rooms.delete(currentRoomCode);
-      return;
+    const player = room.players.find(p => p.id === currentPlayerId);
+    if (player && player.ws === ws) {
+      player.ws = null;
+      player.disconnectedAt = Date.now();
     }
 
     const wasPublic = room.isPublic;
-    // Remover jogador ou notificar adversário
-    const remaining = room.players.filter(p => p.id !== currentPlayerId);
-    if (remaining.length === 0) {
-      rooms.delete(currentRoomCode);
-      if (wasPublic) broadcastPublicRooms();
-      console.log(`[Sala ${currentRoomCode}] Encerrada (todos desconectados).`);
-    } else {
-      room.players = remaining;
-      room.state = 'waiting';
-      if (wasPublic) broadcastPublicRooms();
-      const opponent = remaining[0];
-      if (opponent && opponent.ws) {
-        send(opponent.ws, 'opponent_disconnected', {
-          message: 'O comandante adversário se desconectou da batalha naval.'
-        });
-      }
+    if (wasPublic && room.state === 'waiting') {
+      broadcastPublicRooms();
+    }
+
+    const opponent = room.players.find(p => p.id !== currentPlayerId && p.ws && p.ws.readyState === WebSocket.OPEN);
+    if (opponent) {
+      send(opponent.ws, 'opponent_disconnected', {
+        message: 'O comandante adversário se desconectou. Aguardando reconexão...'
+      });
+    }
+
+    // Janela de tolerância para reconexão (60 segundos)
+    if (player && player.ws === null) {
+      if (player.disconnectTimer) clearTimeout(player.disconnectTimer);
+      player.disconnectTimer = setTimeout(() => {
+        // Se ainda não reconectou
+        if (!player.ws || player.ws.readyState !== WebSocket.OPEN) {
+          const currentRoom = rooms.get(currentRoomCode);
+          if (!currentRoom) return;
+
+          const stillActive = currentRoom.players.filter(p => p.id !== player.id && p.ws && p.ws.readyState === WebSocket.OPEN);
+          if (stillActive.length === 0) {
+            rooms.delete(currentRoomCode);
+            if (wasPublic) broadcastPublicRooms();
+            console.log(`[Sala ${currentRoomCode}] Encerrada por inatividade (tempo de reconexão esgotado).`);
+          } else {
+            currentRoom.players = currentRoom.players.filter(p => p.id !== player.id);
+            if (currentRoom.state === 'battle') {
+              currentRoom.state = 'gameover';
+              send(stillActive[0].ws, 'game_over', {
+                isWinner: true,
+                winnerName: stillActive[0].name,
+                forfeit: true,
+                message: 'Vitória por abandono do adversário.'
+              });
+            } else {
+              currentRoom.state = 'waiting';
+              if (wasPublic) broadcastPublicRooms();
+              send(stillActive[0].ws, 'opponent_left', {
+                message: 'O comandante adversário não retornou a tempo.'
+              });
+            }
+          }
+        }
+      }, 60000);
     }
   });
 });

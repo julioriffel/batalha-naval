@@ -151,8 +151,29 @@
         ws.onclose = () => {
           wsConnectingPromise = null;
           state.ws = null;
-          if (screens.battle && screens.battle.classList.contains('active')) {
-            showToast('Desconectado do servidor naval.');
+
+          if (state.roomCode) {
+            if (screens.battle && screens.battle.classList.contains('active')) {
+              showToast('Radar desconectado. Tentando reconectar...');
+              if (hudTurnBanner) {
+                hudTurnBanner.textContent = 'RECONECTANDO AO RADAR...';
+                hudTurnBanner.className = 'turn-banner alert-danger';
+              }
+            }
+            setTimeout(() => {
+              if (state.roomCode && (!state.ws || state.ws.readyState !== WebSocket.OPEN)) {
+                initWebSocket().then(() => {
+                  sendWS('reconnect_room', {
+                    roomCode: state.roomCode,
+                    persistentId: state.persistentId,
+                    friendCode: state.friendCode,
+                    playerId: state.playerId,
+                    playerName: state.playerName,
+                    origin: window.location.origin
+                  });
+                }).catch(() => {});
+              }
+            }, 2000);
           }
         };
 
@@ -179,6 +200,37 @@
     }
   }
 
+  // --- Sincronização da URL com o Código da Sala Ativa ---
+  function syncRoomUrl(roomCode) {
+    const cleanCode = (roomCode || '').toUpperCase().trim();
+    const currentParams = new URLSearchParams(window.location.search);
+    const existingParam = currentParams.get('sala');
+
+    if (cleanCode) {
+      try {
+        sessionStorage.setItem('naval_active_room', cleanCode);
+      } catch (e) {}
+
+      if (existingParam !== cleanCode) {
+        currentParams.set('sala', cleanCode);
+        const newUrl = `${window.location.pathname}?${currentParams.toString()}`;
+        window.history.replaceState({ screen: state.screen || 'room', roomCode: cleanCode, navalInGame: true }, '', newUrl);
+      }
+    } else {
+      try {
+        sessionStorage.removeItem('naval_active_room');
+      } catch (e) {}
+
+      if (currentParams.has('sala') || currentParams.has('desafio')) {
+        currentParams.delete('sala');
+        currentParams.delete('desafio');
+        const newQuery = currentParams.toString();
+        const newUrl = newQuery ? `${window.location.pathname}?${newQuery}` : window.location.pathname;
+        window.history.replaceState({ screen: 'lobby', navalInGame: false }, '', newUrl);
+      }
+    }
+  }
+
   // --- Controle Visual do Código da Sala Ativa ---
   function updateActiveRoomCodeDisplay(code) {
     state.roomCode = code || null;
@@ -201,6 +253,8 @@
       if (battleCode) battleCode.textContent = '----';
       if (waitingCode) waitingCode.textContent = '----';
     }
+
+    syncRoomUrl(code);
   }
 
   // --- Message Dispatcher ---
@@ -363,6 +417,138 @@
         showToast(msg.message, 4000);
         hudTurnBanner.textContent = 'ADVERSÁRIO DESCONECTOU';
         hudTurnBanner.className = 'turn-banner alert-danger';
+        break;
+
+      case 'opponent_reconnected':
+        showToast(msg.message || 'O comandante adversário reconectou!', 4000);
+        window.tacticalAudio.sonarPing();
+        if (screens.battle && screens.battle.classList.contains('active')) {
+          updateTurnDisplay(state.battle.isMyTurn, state.battle.turnPlayerName);
+        }
+        break;
+
+      case 'reconnect_placement':
+        state.roomCode = msg.roomCode;
+        updateActiveRoomCodeDisplay(msg.roomCode);
+        state.playerId = msg.playerId;
+        state.playerName = msg.playerName;
+        state.opponentName = msg.opponentName;
+        if (msg.opponentFriendCode) {
+          state.opponentFriendCode = msg.opponentFriendCode;
+          updateOpponentFriendButtons();
+        }
+        state.isHost = Boolean(msg.isHost);
+        state.isBotMatch = Boolean(msg.isBot);
+        if (msg.shipSpecs) state.shipSpecs = msg.shipSpecs;
+
+        initPlacementPhase();
+        showScreen('placement');
+
+        if (msg.ready && Array.isArray(msg.ships) && msg.ships.length > 0) {
+          state.placement.ships = msg.ships;
+          renderPlacementFleetChips();
+          updatePlacementGridDisplay();
+          document.getElementById('btn-confirm-fleet').disabled = true;
+          document.getElementById('btn-confirm-fleet').textContent = 'Frota Pronta';
+          document.getElementById('placement-status-text').textContent = 'Aguardando oponente...';
+        } else if (Array.isArray(msg.ships) && msg.ships.length > 0) {
+          state.placement.ships = msg.ships;
+          renderPlacementFleetChips();
+          updatePlacementGridDisplay();
+          checkAllShipsPlaced();
+        }
+
+        showToast('Reconectado à sala de preparação!', 3500);
+        window.tacticalAudio.sonarPing();
+        break;
+
+      case 'battle_reconnected':
+        state.roomCode = msg.roomCode;
+        updateActiveRoomCodeDisplay(msg.roomCode);
+        state.playerId = msg.playerId;
+        state.playerName = msg.playerName;
+        state.opponentName = msg.opponentName;
+        if (msg.opponentFriendCode) {
+          state.opponentFriendCode = msg.opponentFriendCode;
+          updateOpponentFriendButtons();
+        }
+        state.isHost = Boolean(msg.isHost);
+        state.isBotMatch = Boolean(msg.isBot);
+
+        state.battle.isMyTurn = msg.isYourTurn;
+        state.battle.turnPlayerName = msg.activePlayerName;
+        state.battle.attackGrid = Array.from({ length: 10 }, () => Array(10).fill(null));
+        state.battle.defenseGrid = Array.from({ length: 10 }, () => Array(10).fill(null));
+
+        renderGrid(attackGridEl, true, onAttackCellClick);
+        renderGrid(defenseGridEl, false);
+
+        state.placement.ships = msg.myFleet || [];
+        (msg.myFleet || []).forEach(ship => {
+          ship.coords.forEach(c => {
+            const cell = defenseGridEl.querySelector(`[data-row="${c.row}"][data-col="${c.col}"]`);
+            if (cell) cell.classList.add('ship');
+          });
+        });
+
+        (msg.myHitsReceived || []).forEach(coordStr => {
+          const [r, c] = coordStr.split(',').map(Number);
+          if (state.battle.defenseGrid[r]) state.battle.defenseGrid[r][c] = 'hit';
+          const cell = defenseGridEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+          if (cell) cell.className = 'grid-cell hit';
+        });
+
+        (msg.myMissesReceived || []).forEach(coordStr => {
+          const [r, c] = coordStr.split(',').map(Number);
+          if (state.battle.defenseGrid[r]) state.battle.defenseGrid[r][c] = 'miss';
+          const cell = defenseGridEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+          if (cell) cell.className = 'grid-cell miss';
+        });
+
+        (msg.opponentHitsReceived || []).forEach(coordStr => {
+          const [r, c] = coordStr.split(',').map(Number);
+          if (state.battle.attackGrid[r]) state.battle.attackGrid[r][c] = 'hit';
+          const cell = attackGridEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+          if (cell) cell.className = 'grid-cell hit';
+        });
+
+        (msg.opponentMissesReceived || []).forEach(coordStr => {
+          const [r, c] = coordStr.split(',').map(Number);
+          if (state.battle.attackGrid[r]) state.battle.attackGrid[r][c] = 'miss';
+          const cell = attackGridEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+          if (cell) cell.className = 'grid-cell miss';
+        });
+
+        renderFleetPips();
+        let enemySunkCount = 0;
+        (msg.opponentSunkShips || []).forEach(ship => {
+          enemySunkCount++;
+          markShipSunk(attackGridEl, ship.coords);
+          const enemyPip = document.getElementById(`enemy-pip-${ship.id}`);
+          if (enemyPip) enemyPip.classList.add('sunk');
+        });
+        state.battle.enemySunkCount = enemySunkCount;
+
+        if (msg.sessionScore) {
+          updateDuelScore(msg.sessionScore);
+        }
+
+        showScreen('battle');
+        updateTurnDisplay(msg.isYourTurn, msg.activePlayerName);
+        showToast('Reconectado à batalha naval!', 3500);
+        window.tacticalAudio.sonarPing();
+        break;
+
+      case 'reconnect_failed':
+        const prevActiveRoom = (function() {
+          try { return sessionStorage.getItem('naval_active_room'); } catch (e) { return null; }
+        })();
+        if (prevActiveRoom && prevActiveRoom === msg.roomCode) {
+          showToast('A sala anterior foi encerrada ou expirou.', 4000);
+          syncRoomUrl(null);
+        } else {
+          showToast(msg.message || `Sala #${msg.roomCode} pronta. Toque em Entrar na Sala.`);
+        }
         break;
 
       case 'surrender_acknowledged':
@@ -707,19 +893,34 @@
     });
   }
 
-  // --- URL Param Auto-Fill (?sala=XYZ ou ?amigo=CMD-XYZ) ---
+  // --- URL Param Auto-Fill & Auto-Reconexão (?sala=XYZ ou ?amigo=CMD-XYZ) ---
   const urlParams = new URLSearchParams(window.location.search);
   const paramSala = urlParams.get('sala');
   const isChallenge = urlParams.get('desafio') === '1';
 
   if (paramSala) {
-    inputRoomCode.value = paramSala.toUpperCase();
+    const cleanRoomCode = paramSala.toUpperCase().trim();
+    inputRoomCode.value = cleanRoomCode;
     inputRoomCode.focus();
+
+    // Conecta WebSocket e tenta restaurar automaticamente a partida em caso de recarregamento
+    initWebSocket().then(() => {
+      sendWS('reconnect_room', {
+        roomCode: cleanRoomCode,
+        persistentId: state.persistentId,
+        friendCode: state.friendCode,
+        playerName: state.playerName,
+        origin: window.location.origin
+      });
+    }).catch(err => {
+      console.warn('Erro ao conectar WebSocket para reconexão:', err);
+    });
+
     if (isChallenge) {
-      showToast(`Desafio recebido: sala ${paramSala.toUpperCase()}`, 5000);
+      showToast(`Desafio recebido: sala ${cleanRoomCode}`, 5000);
       window.tacticalAudio.turnAlertSound();
     } else {
-      showToast(`Código ${paramSala.toUpperCase()} carregado.`);
+      showToast(`Código ${cleanRoomCode} carregado.`);
     }
   }
 
