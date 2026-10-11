@@ -1,7 +1,10 @@
 services:
+  # ─────────────────────────────────────────────────────────
+  # Batalha Naval (Produção) — Servidor WebSocket & HTTP
+  # ─────────────────────────────────────────────────────────
   batalha:
-    image: ghcr.io/julioriffel/batalha-naval:latest
-    build: .
+    image: ghcr.io/julioriffel/batalha-naval:${BATALHA_PROD_IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: batalha-naval
     restart: always
     security_opt:
@@ -9,23 +12,31 @@ services:
     volumes:
       - ./data:/app/data
     environment:
+      - NODE_ENV=production
       - PORT=3000
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://127.0.0.1:3000/\", (r) => process.exit(r.statusCode === 200 ? 0 : 1))' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=server_public"
 
-      # ── HTTP router (port 80 -> redirect to HTTPS) ──
-      - "traefik.http.routers.batalha-http.rule=Host(`batalha.bolsadedados.com.br`)"
-      - "traefik.http.routers.batalha-http.entrypoints=web"
-      - "traefik.http.routers.batalha-http.middlewares=batalha-redirect-https"
-      - "traefik.http.middlewares.batalha-redirect-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.batalha-redirect-https.redirectscheme.permanent=true"
+      # ── HTTPS router ──
+      - "traefik.http.routers.batalha-prod.rule=Host(`${BATALHA_PROD_DOMAIN:-batalha.bolsadedados.com.br}`)"
+      - "traefik.http.routers.batalha-prod.entrypoints=websecure"
+      - "traefik.http.routers.batalha-prod.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.batalha-prod.priority=10"
+      - "traefik.http.services.batalha-prod.loadbalancer.server.port=3000"
 
-      # ── HTTPS router (port 443 -> TLS Let's Encrypt) ──
-      - "traefik.http.routers.batalha.rule=Host(`batalha.bolsadedados.com.br`)"
-      - "traefik.http.routers.batalha.entrypoints=websecure"
-      - "traefik.http.routers.batalha.tls.certresolver=letsencrypt"
-      - "traefik.http.services.batalha.loadbalancer.server.port=3000"
+      # ── HTTP router (redirect to HTTPS) ──
+      - "traefik.http.routers.batalha-prod-http.rule=Host(`${BATALHA_PROD_DOMAIN:-batalha.bolsadedados.com.br}`)"
+      - "traefik.http.routers.batalha-prod-http.entrypoints=web"
+      - "traefik.http.routers.batalha-prod-http.middlewares=batalha-prod-redirect-https"
+      - "traefik.http.middlewares.batalha-prod-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.batalha-prod-redirect-https.redirectscheme.permanent=true"
     networks:
       - public
 

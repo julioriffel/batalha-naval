@@ -543,6 +543,188 @@ body {
   border-color: var(--cyan);
 }
 
+/* --- LOBBY MAIN ACTIONS & JOGAR COM BOT --- */
+.lobby-primary-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.lobby-primary-actions .btn-primary {
+  padding: 12px 8px;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.btn-bot-play {
+  width: 100%;
+  padding: 12px 8px;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.3), rgba(88, 28, 135, 0.45));
+  border: 1px solid rgba(168, 85, 247, 0.55);
+  border-radius: var(--radius-sm);
+  color: #d8b4fe;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(147, 51, 234, 0.25);
+  user-select: none;
+}
+
+.btn-bot-play:hover {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.5), rgba(88, 28, 135, 0.65));
+  border-color: #c084fc;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-bot-play:active {
+  transform: scale(0.98);
+}
+
+/* --- MODAL BATALHA CONTRA BOT --- */
+.modal-bot-card {
+  max-width: 380px;
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 35px rgba(147, 51, 234, 0.35);
+}
+
+.bot-modal-header {
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.bot-modal-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(147, 51, 234, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  border-radius: 50%;
+  color: #c084fc;
+  margin-bottom: 6px;
+  box-shadow: 0 0 12px rgba(147, 51, 234, 0.3);
+}
+
+.bot-modal-icon-badge .icon-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.bot-difficulty-selector {
+  margin-top: 6px;
+  text-align: left;
+}
+
+.difficulty-cards-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.difficulty-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(4, 16, 32, 0.65);
+  border: 1px solid rgba(0, 240, 255, 0.18);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.difficulty-card:hover {
+  border-color: rgba(0, 240, 255, 0.4);
+  background: rgba(0, 240, 255, 0.05);
+}
+
+.difficulty-card.active {
+  border-color: var(--cyan);
+  background: rgba(0, 240, 255, 0.12);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+}
+
+.difficulty-card-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.difficulty-card.active .difficulty-card-radio {
+  border-color: var(--cyan);
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+}
+
+.difficulty-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.difficulty-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.difficulty-card-title strong {
+  font-size: 0.88rem;
+  color: #fff;
+}
+
+.diff-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.diff-tag.easy {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+}
+
+.diff-tag.medium {
+  background: rgba(255, 170, 0, 0.15);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.4);
+}
+
+.diff-tag.hard {
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+  border: 1px solid rgba(255, 59, 48, 0.4);
+}
+
+.difficulty-card-desc {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  line-height: 1.25;
+}
+
 .lobby-divider {
   display: flex;
   align-items: center;

@@ -3,7 +3,7 @@
  * Caching tático offline e suporte a instalação como aplicativo nativo.
  */
 
-const CACHE_NAME = 'batalha-naval-v2.0';
+const CACHE_NAME = 'batalha-naval-v2.1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -14,7 +14,9 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon.svg',
   '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-192.png',
+  '/icons/icon-maskable-512.png'
 ];
 
 self.addEventListener('install', (event) => {

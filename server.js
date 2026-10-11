@@ -454,9 +454,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+    let contentType = MIME_TYPES[ext] || 'application/octet-stream';
+    if (pathname === '/manifest.json' || ext === '.webmanifest') {
+      contentType = 'application/manifest+json; charset=utf-8';
+    }
 
-    const isNoCacheFile = pathname === '/' || pathname === '/index.html' || pathname === '/sw.js';
+    const isNoCacheFile = pathname === '/' || pathname === '/index.html' || pathname === '/sw.js' || pathname === '/manifest.json';
     const headers = {
       'Content-Type': contentType
     };

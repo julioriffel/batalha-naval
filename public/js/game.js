@@ -24,6 +24,8 @@
     friends: [],
     isPublicRoom: true,
     isHost: false,
+    isBotMatch: false,
+    botDifficulty: localStorage.getItem('naval_bot_difficulty') || 'medium',
     shipSpecs: [
       { id: 'carrier', name: 'Porta-Aviões', size: 5 },
       { id: 'battleship', name: 'Encouraçado', size: 4 },
@@ -210,40 +212,44 @@
         updateActiveRoomCodeDisplay(msg.roomCode);
         state.playerId = msg.playerId;
         state.isHost = true;
+        state.isBotMatch = Boolean(msg.isBot);
+        if (msg.opponentName) state.opponentName = msg.opponentName;
         state.joinUrl = msg.joinUrl || `${window.location.origin}/?sala=${msg.roomCode}`;
 
-        const qrImg = document.getElementById('qr-img');
-        if (qrImg && msg.qrDataUrl) {
-          qrImg.src = msg.qrDataUrl;
-        }
-
-        const netIpEl = document.getElementById('network-ip-display');
-        if (netIpEl) {
-          netIpEl.textContent = state.joinUrl;
-        }
-
-        const waitingPrivacyBadge = document.getElementById('waiting-privacy-badge');
-        if (waitingPrivacyBadge) {
-          if (msg.isPublic !== false) {
-            waitingPrivacyBadge.textContent = 'Sala Pública • Aberta no radar';
-            waitingPrivacyBadge.style.background = 'rgba(0, 240, 255, 0.15)';
-            waitingPrivacyBadge.style.color = 'var(--cyan)';
-            waitingPrivacyBadge.style.borderColor = 'var(--cyan)';
-          } else {
-            waitingPrivacyBadge.textContent = 'Sala Privada • Oculta do radar';
-            waitingPrivacyBadge.style.background = 'rgba(255, 170, 0, 0.15)';
-            waitingPrivacyBadge.style.color = '#ffaa00';
-            waitingPrivacyBadge.style.borderColor = '#ffaa00';
+        if (!msg.isBot) {
+          const qrImg = document.getElementById('qr-img');
+          if (qrImg && msg.qrDataUrl) {
+            qrImg.src = msg.qrDataUrl;
           }
-        }
 
-        const waitingParticipantsText = document.getElementById('waiting-participants-text');
-        if (waitingParticipantsText) {
-          waitingParticipantsText.textContent = '1/2 Jogadores';
-        }
+          const netIpEl = document.getElementById('network-ip-display');
+          if (netIpEl) {
+            netIpEl.textContent = state.joinUrl;
+          }
 
-        showScreen('waitingHost');
-        window.tacticalAudio.sonarPing();
+          const waitingPrivacyBadge = document.getElementById('waiting-privacy-badge');
+          if (waitingPrivacyBadge) {
+            if (msg.isPublic !== false) {
+              waitingPrivacyBadge.textContent = 'Sala Pública • Aberta no radar';
+              waitingPrivacyBadge.style.background = 'rgba(0, 240, 255, 0.15)';
+              waitingPrivacyBadge.style.color = 'var(--cyan)';
+              waitingPrivacyBadge.style.borderColor = 'var(--cyan)';
+            } else {
+              waitingPrivacyBadge.textContent = 'Sala Privada • Oculta do radar';
+              waitingPrivacyBadge.style.background = 'rgba(255, 170, 0, 0.15)';
+              waitingPrivacyBadge.style.color = '#ffaa00';
+              waitingPrivacyBadge.style.borderColor = '#ffaa00';
+            }
+          }
+
+          const waitingParticipantsText = document.getElementById('waiting-participants-text');
+          if (waitingParticipantsText) {
+            waitingParticipantsText.textContent = '1/2 Jogadores';
+          }
+
+          showScreen('waitingHost');
+          window.tacticalAudio.sonarPing();
+        }
         break;
 
       case 'public_rooms_updated':
@@ -254,12 +260,15 @@
         updateActiveRoomCodeDisplay(msg.roomCode);
         state.playerId = msg.playerId;
         state.isHost = false;
+        state.isBotMatch = Boolean(msg.isBot);
         state.opponentName = msg.opponentName;
         if (msg.opponentFriendCode) {
           state.opponentFriendCode = msg.opponentFriendCode;
           updateOpponentFriendButtons();
         }
-        showToast(`Conectado à sala #${msg.roomCode}`);
+        if (!msg.isBot) {
+          showToast(`Conectado à sala #${msg.roomCode}`);
+        }
         break;
 
       case 'opponent_joined':
@@ -275,6 +284,8 @@
       case 'start_placement':
         if (msg.shipSpecs) state.shipSpecs = msg.shipSpecs;
         if (state.roomCode) updateActiveRoomCodeDisplay(state.roomCode);
+        if (msg.opponentName) state.opponentName = msg.opponentName;
+        if (msg.isBot !== undefined) state.isBotMatch = Boolean(msg.isBot);
         initPlacementPhase();
         showScreen('placement');
         window.tacticalAudio.sonarPing();
@@ -432,6 +443,84 @@
       origin: window.location.origin
     });
   });
+
+  // --- CONTROLE DO MODAL DE BATALHA CONTRA BOT ---
+  const modalBot = document.getElementById('modal-bot');
+  const btnOpenBotModal = document.getElementById('btn-open-bot-modal');
+  const btnCloseBotModalX = document.getElementById('btn-close-bot-modal-x');
+  const btnStartBotGame = document.getElementById('btn-start-bot-game');
+  const botDifficultyCards = document.querySelectorAll('.difficulty-card');
+
+  function syncBotDifficultyUI() {
+    botDifficultyCards.forEach(card => {
+      const diff = card.getAttribute('data-difficulty');
+      card.classList.toggle('active', diff === state.botDifficulty);
+    });
+  }
+
+  if (btnOpenBotModal) {
+    btnOpenBotModal.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      window.tacticalHaptics.click();
+      syncBotDifficultyUI();
+      if (modalBot) modalBot.classList.add('active');
+    });
+  }
+
+  if (btnCloseBotModalX) {
+    btnCloseBotModalX.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      if (modalBot) modalBot.classList.remove('active');
+    });
+  }
+
+  if (modalBot) {
+    modalBot.addEventListener('click', (e) => {
+      if (e.target === modalBot) {
+        modalBot.classList.remove('active');
+      }
+    });
+  }
+
+  botDifficultyCards.forEach(card => {
+    card.addEventListener('click', () => {
+      window.tacticalAudio.click();
+      window.tacticalHaptics.click();
+      const diff = card.getAttribute('data-difficulty');
+      if (diff) {
+        state.botDifficulty = diff;
+        localStorage.setItem('naval_bot_difficulty', diff);
+        syncBotDifficultyUI();
+      }
+    });
+  });
+
+  if (btnStartBotGame) {
+    let isStartingBot = false;
+    btnStartBotGame.addEventListener('click', async () => {
+      window.tacticalAudio.click();
+      window.tacticalHaptics.click();
+      if (isStartingBot) return;
+      isStartingBot = true;
+      setTimeout(() => { isStartingBot = false; }, 1500);
+
+      if (modalBot) modalBot.classList.remove('active');
+
+      state.playerName = inputPlayerName.value.trim() || 'Comandante';
+      localStorage.setItem('naval_player_name', state.playerName);
+      state.isBotMatch = true;
+
+      await initWebSocket();
+      sendWS('create_bot_game', {
+        playerName: state.playerName,
+        difficulty: state.botDifficulty,
+        friendCode: state.friendCode,
+        persistentId: state.persistentId,
+        origin: window.location.origin
+      });
+      window.tacticalAudio.sonarPing();
+    });
+  }
 
   let isJoiningRoom = false;
 

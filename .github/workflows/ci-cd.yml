@@ -1,0 +1,106 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, homologation]
+  pull_request:
+    branches: [main, homologation]
+
+jobs:
+  quality-and-tests:
+    name: Code Quality & Syntax Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Server Syntax
+        run: node -c server.js
+
+  build-and-deploy:
+    name: Build Multi-Arch Docker Image & Deploy via Portainer
+    needs: quality-and-tests
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/homologation')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (ARM64 support)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
+      - name: Extract Docker metadata and tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=hml,enable=${{ github.ref == 'refs/heads/homologation' }}
+            type=raw,value=hml-${{ github.sha }},enable=${{ github.ref == 'refs/heads/homologation' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ github.sha }},enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Multi-Arch Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+            type=gha
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Trigger Portainer Webhook
+        env:
+          PORTAINER_WEBHOOK_URL_HML: ${{ secrets.PORTAINER_BATALHA_WEBHOOK_URL_HML || secrets.PORTAINER_WEBHOOK_URL_HML }}
+          PORTAINER_WEBHOOK_URL_PROD: ${{ secrets.PORTAINER_BATALHA_WEBHOOK_URL_PROD || secrets.PORTAINER_WEBHOOK_URL_PROD || secrets.PORTAINER_WEBHOOK_URL }}
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/homologation" ]; then
+            TARGET_WEBHOOK="$PORTAINER_WEBHOOK_URL_HML"
+            ENV_NAME="Homologação"
+          else
+            TARGET_WEBHOOK="$PORTAINER_WEBHOOK_URL_PROD"
+            ENV_NAME="Produção"
+          fi
+
+          if [ -n "$TARGET_WEBHOOK" ]; then
+            echo "🚀 Disparando webhook do Portainer para deploy em $ENV_NAME..."
+            HTTP_CODE=$(curl -s -k -o /dev/null -w "%{http_code}" -X POST "$TARGET_WEBHOOK")
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "✅ Webhook do Portainer executado com sucesso (HTTP $HTTP_CODE)!"
+            else
+              echo "⚠️ Portainer webhook respondeu com código HTTP $HTTP_CODE"
+            fi
+          else
+            echo "ℹ️ PORTAINER_WEBHOOK_URL não configurado para $ENV_NAME. Pule o trigger do webhook."
+          fi
