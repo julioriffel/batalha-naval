@@ -128,6 +128,11 @@
 
         ws.onopen = () => {
           wsConnectingPromise = null;
+          sendWS('register_user', {
+            friendCode: state.friendCode,
+            persistentId: state.persistentId,
+            playerName: state.playerName
+          });
           sendWS('get_public_rooms');
           resolve(ws);
         };
@@ -302,8 +307,13 @@
         break;
 
       case 'friend_added_notice':
-        showToast(`Comandante ${msg.fromName} (${msg.fromCode}) adicionou você como amigo.`, 5000);
         window.tacticalAudio.sonarPing();
+        if (window.tacticalHaptics) window.tacticalHaptics.radarPing();
+        if (msg.isMutual) {
+          showToast(`Comandante ${msg.fromName} retribuiu seu pedido! Vocês agora são amigos mútuos.`, 5000);
+        } else {
+          showToast(`Pedido de amizade recebido do Comandante ${msg.fromName}! Toque em Amigos para responder.`, 5500);
+        }
         fetchAndRenderFriends();
         break;
 
@@ -610,13 +620,21 @@
   }
 
   const paramAmigo = urlParams.get('amigo');
+  const autoAcceptAmigo = urlParams.get('aceitar') === '1';
   if (paramAmigo) {
     const friendCandidate = paramAmigo.toUpperCase().trim();
-    setTimeout(() => {
-      if (confirm(`Deseja adicionar o Comandante com código ${friendCandidate} aos seus amigos?`)) {
-        addFriendByCode(friendCandidate);
+    setTimeout(async () => {
+      await syncPlayerProfile();
+      if (autoAcceptAmigo) {
+        await addFriendByCode(friendCandidate);
+        openFriendsModal();
+      } else {
+        if (confirm(`Deseja aceitar o pedido do Comandante ${friendCandidate} e adicioná-lo aos seus amigos?`)) {
+          await addFriendByCode(friendCandidate);
+          openFriendsModal();
+        }
       }
-    }, 1000);
+    }, 800);
   }
 
   // --- SHIP PLACEMENT LOGIC ---
@@ -1224,6 +1242,15 @@
         localStorage.setItem('naval_friend_code', data.code);
         const codeDisplay = document.getElementById('my-display-friend-code');
         if (codeDisplay) codeDisplay.textContent = data.code;
+
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          sendWS('register_user', {
+            friendCode: data.code,
+            persistentId: state.persistentId,
+            playerName: state.playerName
+          });
+        }
+        fetchAndRenderFriends();
       }
       state.pushEnabled = !!data.pushEnabled;
       updatePushStatusUI(state.pushEnabled);
@@ -1347,14 +1374,73 @@
     if (!state.friendCode) await syncPlayerProfile();
     const container = document.getElementById('friends-list-container');
     const badge = document.getElementById('friends-count-badge');
-    if (!container) return;
+    const incomingSection = document.getElementById('incoming-requests-section');
+    const incomingContainer = document.getElementById('incoming-requests-container');
+    const incomingBadge = document.getElementById('incoming-requests-badge');
+    const headerPip = document.getElementById('header-friends-pip');
+    const lobbyPip = document.getElementById('lobby-friends-pip');
 
     try {
       const res = await fetch(`/api/friends/list?code=${state.friendCode}`);
       const data = await res.json();
       const friends = data.friends || [];
+      const incomingRequests = data.incomingRequests || [];
       state.friends = friends;
 
+      // Atualiza indicadores visuais de novos pedidos pendentes
+      const pendingCount = incomingRequests.length;
+      if (headerPip) headerPip.style.display = pendingCount > 0 ? 'block' : 'none';
+      if (lobbyPip) lobbyPip.style.display = pendingCount > 0 ? 'block' : 'none';
+
+      // Renderiza Seção de Pedidos Recebidos
+      if (incomingSection && incomingContainer) {
+        if (pendingCount > 0) {
+          incomingSection.style.display = 'block';
+          if (incomingBadge) incomingBadge.textContent = pendingCount;
+          incomingContainer.innerHTML = incomingRequests.map(req => {
+            return `
+              <div class="incoming-request-item">
+                <div class="friend-info">
+                  <div class="friend-name-row">
+                    <span class="friend-name">${escapeHtml(req.name)}</span>
+                    <span style="font-size:0.75rem; color:#ffaa00;">${req.code}</span>
+                  </div>
+                  <div class="friend-badges">
+                    <span class="badge-pending">Quer ser seu amigo</span>
+                    ${req.pushEnabled ? '<span class="badge-push-on">Push Ativo</span>' : ''}
+                  </div>
+                </div>
+                <div class="friend-actions">
+                  <button class="btn-accept-request" data-code="${req.code}" title="Aceitar pedido de amizade">
+                    Aceitar
+                  </button>
+                  <button class="btn-decline-request" data-code="${req.code}" title="Recusar pedido">
+                    Recusar
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          incomingContainer.querySelectorAll('.btn-accept-request').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const code = btn.getAttribute('data-code');
+              addFriendByCode(code);
+            });
+          });
+
+          incomingContainer.querySelectorAll('.btn-decline-request').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const code = btn.getAttribute('data-code');
+              declineFriendRequest(code);
+            });
+          });
+        } else {
+          incomingSection.style.display = 'none';
+        }
+      }
+
+      if (!container) return;
       if (badge) badge.textContent = friends.length;
 
       if (friends.length === 0) {
@@ -1413,6 +1499,29 @@
 
     } catch (err) {
       console.error('Erro buscando lista de amigos:', err);
+    }
+  }
+
+  async function declineFriendRequest(requesterCode) {
+    if (!requesterCode) return;
+    window.tacticalAudio.click();
+    window.tacticalHaptics.click();
+    try {
+      const res = await fetch('/api/friends/decline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          myCode: state.friendCode,
+          requesterCode
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Pedido de amizade recusado.');
+        fetchAndRenderFriends();
+      }
+    } catch (e) {
+      console.warn('Erro ao recusar pedido de amizade:', e);
     }
   }
 

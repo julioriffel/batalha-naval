@@ -212,13 +212,13 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  // 4. Listar Amigos do Comandante
+  // 4. Listar Amigos do Comandante e Pedidos Recebidos
   if (pathname === '/api/friends/list') {
     const code = (parsedUrl.searchParams.get('code') || '').trim().toUpperCase();
     const player = playersData[code];
 
     if (!player) {
-      return sendJson(200, { friends: [] });
+      return sendJson(200, { friends: [], incomingRequests: [] });
     }
 
     const friendsList = (player.friends || []).map(fCode => {
@@ -233,7 +233,17 @@ const server = http.createServer(async (req, res) => {
       };
     });
 
-    return sendJson(200, { friends: friendsList });
+    // Pedidos de amizade recebidos (comandantes que adicionaram este jogador mas ainda não foram retribuídos)
+    const incomingRequests = Object.values(playersData)
+      .filter(p => p.code !== code && Array.isArray(p.friends) && p.friends.includes(code) && (!player.friends || !player.friends.includes(p.code)))
+      .map(p => ({
+        code: p.code,
+        name: p.name,
+        pushEnabled: !!p.pushSubscription,
+        lastSeen: p.lastSeen || null
+      }));
+
+    return sendJson(200, { friends: friendsList, incomingRequests });
   }
 
   // 5. Adicionar Amigo por Código
@@ -270,7 +280,7 @@ const server = http.createServer(async (req, res) => {
 
     // Notifica em tempo real se o comandante alvo estiver online no WebSocket
     wss.clients.forEach(cWs => {
-      if (cWs.friendCode === targetCode) {
+      if (cWs.friendCode === targetCode || (targetPlayer.persistentId && cWs.persistentId === targetPlayer.persistentId)) {
         send(cWs, 'friend_added_notice', {
           fromCode: myCode,
           fromName: myPlayer.name,
@@ -278,6 +288,38 @@ const server = http.createServer(async (req, res) => {
         });
       }
     });
+
+    // Envia Push Notification para o comandante alvo se possuir inscrição ativa
+    if (targetPlayer.pushSubscription) {
+      const origin = (body.origin || '').replace(/\/$/, '') || `http://${LOCAL_IP}:${PORT}`;
+      const pushTitle = isMutual 
+        ? `Amizade Naval Confirmada!` 
+        : `Pedido de Amizade de ${myPlayer.name}`;
+      const pushBody = isMutual 
+        ? `O Comandante ${myPlayer.name} retribuiu sua amizade! Vocês agora podem se desafiar para a batalha.` 
+        : `O Comandante ${myPlayer.name} (${myCode}) adicionou você como amigo! Toque para aceitar o pedido.`;
+
+      const pushPayload = JSON.stringify({
+        title: pushTitle,
+        body: pushBody,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        data: {
+          url: `${origin}/?amigo=${myCode}&aceitar=1`,
+          fromCode: myCode,
+          fromName: myPlayer.name,
+          type: 'friend_request'
+        }
+      });
+
+      webpush.sendNotification(targetPlayer.pushSubscription, pushPayload).catch(pushErr => {
+        console.warn('[WebPush] Falha ao enviar notificação de amizade:', pushErr.statusCode, pushErr.message);
+        if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+          targetPlayer.pushSubscription = null;
+          savePlayers(playersData);
+        }
+      });
+    }
 
     return sendJson(200, {
       success: true,
@@ -289,6 +331,21 @@ const server = http.createServer(async (req, res) => {
         pushEnabled: !!targetPlayer.pushSubscription
       }
     });
+  }
+
+  // 5.1 Recusar Pedido de Amizade
+  if (pathname === '/api/friends/decline' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const myCode = (body.myCode || '').trim().toUpperCase();
+    const requesterCode = (body.requesterCode || '').trim().toUpperCase();
+
+    const requester = playersData[requesterCode];
+    if (requester && requester.friends) {
+      requester.friends = requester.friends.filter(c => c !== myCode);
+      savePlayers(playersData);
+    }
+
+    return sendJson(200, { success: true });
   }
 
   // 6. Remover Amigo
@@ -739,6 +796,15 @@ wss.on('connection', ws => {
         return send(ws, 'public_rooms_updated', {
           rooms: getPublicWaitingRooms()
         });
+      }
+
+      // 0.2 REGISTRAR USUÁRIO NO WEBSOCKET (SINCRONIZAÇÃO EM TEMPO REAL)
+      if (type === 'register_user') {
+        const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
+        const persistentId = (payload.persistentId || '').trim() || null;
+        if (friendCode) ws.friendCode = friendCode;
+        if (persistentId) ws.persistentId = persistentId;
+        return;
       }
 
       // 1. CRIAR SALA

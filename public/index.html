@@ -30,11 +30,12 @@
       </div>
     </div>
     <div class="hud-actions">
-      <button id="btn-open-friends" class="icon-btn friends-btn" title="Amigos" aria-label="Amigos">
+      <button id="btn-open-friends" class="icon-btn friends-btn" title="Amigos" aria-label="Amigos" style="position: relative;">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
         </svg>
         <span class="btn-label">Amigos</span>
+        <span id="header-friends-pip" class="notification-pip" style="display: none;"></span>
       </button>
       <button id="btn-open-ranking" class="icon-btn ranking-btn" title="Ranking" aria-label="Ranking">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -129,11 +130,12 @@
         </div>
 
         <div class="lobby-quick-actions">
-          <button id="btn-lobby-friends" class="btn-chip-action" title="Amigos">
+          <button id="btn-lobby-friends" class="btn-chip-action" title="Amigos" style="position: relative;">
             <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
             <span>Amigos</span>
+            <span id="lobby-friends-pip" class="notification-pip" style="display: none;"></span>
           </button>
           <button id="btn-lobby-ranking" class="btn-chip-action" title="Ranking">
             <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -377,6 +379,17 @@
       <div class="add-friend-form">
         <input type="text" id="input-add-friend-code" class="input-tactical" placeholder="CÓDIGO (CMD-...)" maxlength="10" autocomplete="off" autocapitalize="characters">
         <button id="btn-submit-add-friend" class="btn-primary" style="white-space: nowrap; padding: 10px 14px;">Adicionar</button>
+      </div>
+
+      <!-- Pedidos de Amizade Recebidos -->
+      <div id="incoming-requests-section" style="display: none; margin-bottom: 14px;">
+        <div class="friends-list-header" style="border-bottom-color: rgba(255, 170, 0, 0.35);">
+          <span class="friends-list-title" style="color: #ffaa00;">Pedidos Recebidos</span>
+          <span id="incoming-requests-badge" class="friends-count-badge" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00; border-color: rgba(255, 170, 0, 0.4);">0</span>
+        </div>
+        <div class="friends-list-wrapper">
+          <div id="incoming-requests-container" class="friends-list"></div>
+        </div>
       </div>
 
       <!-- Friends List -->

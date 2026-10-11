@@ -83,19 +83,50 @@ async function runTest() {
   console.log(`✅ Registro de jogadores OK: Alfa (${codeA}) e Bravo (${codeB})`);
 
   // 1.4 Testar adição de amigo unidirecional (Alfa adiciona Bravo)
+  // Conectar WebSocket de Bravo antes para verificar se recebe aviso em tempo real
+  const wsBravo = new WebSocket(`ws://localhost:${PORT}`);
+  await new Promise(resolve => wsBravo.on('open', resolve));
+  wsBravo.send(JSON.stringify({ type: 'register_user', friendCode: codeB }));
+
+  const bravoNoticePromise = new Promise(resolve => {
+    wsBravo.on('message', m => {
+      const d = JSON.parse(m.toString());
+      if (d.type === 'friend_added_notice') resolve(d);
+    });
+  });
+
   const add1 = await postJson('/api/friends/add', { myCode: codeA, targetCode: codeB });
   if (add1.body.isMutual !== false) throw new Error('Amizade não deveria ser mútua ainda');
   console.log('✅ Alfa adicionou Bravo aos amigos (status: pendente retribuição)');
+
+  // Verifica se Bravo recebeu o aviso do pedido via WebSocket em tempo real
+  const bravoNotice = await bravoNoticePromise;
+  if (bravoNotice.fromCode !== codeA) throw new Error('Bravo não recebeu o pedido de Alfa via WebSocket');
+  console.log('✅ Bravo recebeu notificação de pedido de amizade em tempo real via WebSocket');
+  wsBravo.close();
+
+  // Verifica se Bravo enxerga Alfa em incomingRequests na API /api/friends/list
+  const bravoFriendsRes = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${PORT}/api/friends/list?code=${codeB}`, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  if (!Array.isArray(bravoFriendsRes.incomingRequests) || !bravoFriendsRes.incomingRequests.some(r => r.code === codeA)) {
+    throw new Error('Pedido de Alfa não apareceu em incomingRequests de Bravo');
+  }
+  console.log('✅ Pedido de Alfa listado com sucesso em incomingRequests de Bravo');
 
   // 1.5 Testar regra de segurança: Somente amigos mútuos podem chamar para partida via push!
   const chalFail = await postJson('/api/friends/challenge', { myCode: codeA, targetCode: codeB });
   if (chalFail.status !== 403) throw new Error(`Deveria retornar 403 para não-mútuo, retornou ${chalFail.status}`);
   console.log('✅ Bloqueio de push para não-amigos validado com sucesso (403)');
 
-  // 1.6 Bravo adiciona Alfa de volta -> torna-se amizade mútua!
+  // 1.6 Bravo aceita o pedido de Alfa -> torna-se amizade mútua!
   const add2 = await postJson('/api/friends/add', { myCode: codeB, targetCode: codeA });
   if (add2.body.isMutual !== true) throw new Error('Amizade deveria ser mútua agora');
-  console.log('✅ Bravo retribuiu amizade (status: amigos mútuos)');
+  console.log('✅ Bravo aceitou pedido e retribuiu amizade (status: amigos mútuos)');
 
   // 1.7 Bravo tenta ser chamado sem ter push ativado
   const chalNoPush = await postJson('/api/friends/challenge', { myCode: codeA, targetCode: codeB });

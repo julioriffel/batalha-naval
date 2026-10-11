@@ -3,7 +3,7 @@
  * Caching tático offline e suporte a instalação como aplicativo nativo.
  */
 
-const CACHE_NAME = 'batalha-naval-v1.9';
+const CACHE_NAME = 'batalha-naval-v2.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -94,16 +94,17 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  const isFriendRequest = data.data && data.data.type === 'friend_request';
   const options = {
     body: data.body,
     icon: data.icon || '/icons/icon-192.png',
     badge: data.badge || '/icons/icon-192.png',
     vibrate: [250, 100, 250, 100, 250],
-    tag: 'naval-challenge',
+    tag: isFriendRequest ? 'naval-friend-request' : 'naval-challenge',
     renotify: true,
     data: data.data || { url: '/' },
     actions: [
-      { action: 'accept', title: 'Aceitar Batalha' }
+      { action: 'accept', title: isFriendRequest ? 'Aceitar Amizade' : 'Aceitar Batalha' }
     ]
   };
 
