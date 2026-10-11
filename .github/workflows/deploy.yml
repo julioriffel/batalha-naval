@@ -1,0 +1,85 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy:
+    name: Build Docker Image & Deploy via Portainer
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar QEMU (Suporte Multi-plataforma AMD64 / ARM64)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login no GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extrair Metadados da Imagem Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build e Push da Imagem Docker (Multi-Arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Notificar Portainer via Webhook
+        env:
+          PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+        run: |
+          if [ -z "$PORTAINER_WEBHOOK_URL" ]; then
+            echo "⚠️ AVISO: O secret PORTAINER_WEBHOOK_URL não foi configurado no GitHub Secrets."
+            echo "ℹ️ O build e push para o GHCR foi concluído com sucesso."
+            echo "ℹ️ Para habilitar o deploy automático via Portainer:"
+            echo "   1. No Portainer, acesse a Stack e ative a opção 'Webhook'."
+            echo "   2. Copie a URL gerada (ex: https://portainer.exemplo.com/api/stacks/webhooks/xxxx)."
+            echo "   3. No GitHub: Settings -> Secrets and variables -> Actions -> New repository secret"
+            echo "   4. Nome: PORTAINER_WEBHOOK_URL | Valor: <URL copiada do Portainer>"
+            exit 0
+          fi
+
+          echo "🚀 Disparando webhook de deploy no Portainer..."
+          RESPONSE=$(curl -s -k -w "\n%{http_code}" -X POST "$PORTAINER_WEBHOOK_URL")
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Status HTTP recebido: $HTTP_STATUS"
+          if [ -n "$BODY" ]; then
+            echo "Resposta do Portainer: $BODY"
+          fi
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Deploy autorizado e iniciado com sucesso no Portainer!"
+          else
+            echo "❌ Erro ao acionar o webhook do Portainer (HTTP $HTTP_STATUS)."
+            exit 1
+          fi

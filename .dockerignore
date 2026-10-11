@@ -1,0 +1,11 @@
+node_modules
+.git
+.github
+.gitignore
+data/*.json
+*.log
+.DS_Store
+docs
+test_game.js
+generate_icons.js
+deploy.sh
