@@ -210,8 +210,17 @@
         updateActiveRoomCodeDisplay(msg.roomCode);
         state.playerId = msg.playerId;
         state.isHost = true;
-        document.getElementById('qr-img').src = msg.qrDataUrl;
-        document.getElementById('network-ip-display').textContent = msg.joinUrl;
+        state.joinUrl = msg.joinUrl || `${window.location.origin}/?sala=${msg.roomCode}`;
+
+        const qrImg = document.getElementById('qr-img');
+        if (qrImg && msg.qrDataUrl) {
+          qrImg.src = msg.qrDataUrl;
+        }
+
+        const netIpEl = document.getElementById('network-ip-display');
+        if (netIpEl) {
+          netIpEl.textContent = state.joinUrl;
+        }
 
         const waitingPrivacyBadge = document.getElementById('waiting-privacy-badge');
         if (waitingPrivacyBadge) {
@@ -226,6 +235,11 @@
             waitingPrivacyBadge.style.color = '#ffaa00';
             waitingPrivacyBadge.style.borderColor = '#ffaa00';
           }
+        }
+
+        const waitingParticipantsText = document.getElementById('waiting-participants-text');
+        if (waitingParticipantsText) {
+          waitingParticipantsText.textContent = '1/2 Jogadores';
         }
 
         showScreen('waitingHost');
@@ -594,11 +608,12 @@
   const btnCopyLink = document.getElementById('btn-copy-link');
   if (btnCopyLink) {
     btnCopyLink.addEventListener('click', () => {
-      const url = document.getElementById('network-ip-display').textContent;
+      const netIpEl = document.getElementById('network-ip-display');
+      const url = (netIpEl && netIpEl.textContent) || state.joinUrl || `${window.location.origin}/?sala=${state.roomCode}`;
       navigator.clipboard.writeText(url).then(() => {
-        showToast('Link copiado!');
+        showToast('Link da sala copiado!');
       }).catch(() => {
-        showToast('Copie o endereço mostrado na tela.');
+        showToast(`Código da sala: ${state.roomCode}`);
       });
     });
   }

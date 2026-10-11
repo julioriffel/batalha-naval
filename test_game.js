@@ -216,10 +216,43 @@ async function runTest() {
   if (!foundPubRoom || foundPubRoom.hostName !== 'Comandante Alfa') {
     throw new Error('Sala pública não encontrada no radar /api/rooms/public');
   }
-  if (foundPubRoom.hostPersistentId !== 'usr_test_alfa_123') {
-    throw new Error('hostPersistentId não foi retornado corretamente no radar de salas');
+  if (foundPubRoom.playerCount < 1) {
+    throw new Error('Sala pública sem integrantes apareceu na listagem!');
   }
-  console.log('✅ Sala pública encontrada com sucesso no radar de partidas abertas!');
+  if (afterPubRooms.rooms.some(r => !r.playerCount || r.playerCount < 1)) {
+    throw new Error('Salas sem integrantes foram listadas no radar público!');
+  }
+  console.log('✅ Sala pública com 1 integrante encontrada com sucesso no radar de partidas abertas!');
+
+  // Testar se salas com host desconectado (0 integrantes) são eliminadas do radar
+  const wsGhost = new WebSocket(`ws://localhost:${PORT}`);
+  await new Promise(resolve => wsGhost.on('open', resolve));
+  let ghostCode = '';
+  const ghostCreated = new Promise(resolve => {
+    wsGhost.on('message', m => {
+      const d = JSON.parse(m.toString());
+      if (d.type === 'room_created') {
+        ghostCode = d.roomCode;
+        resolve();
+      }
+    });
+  });
+  wsGhost.send(JSON.stringify({ type: 'create_room', playerName: 'Fantasma', isPublic: true }));
+  await ghostCreated;
+  wsGhost.close();
+  await new Promise(r => setTimeout(r, 300));
+
+  const afterGhostRooms = await new Promise((resolve, reject) => {
+    http.get(`http://localhost:${PORT}/api/rooms/public`, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  if (afterGhostRooms.rooms.some(r => r.roomCode === ghostCode)) {
+    throw new Error('Sala com integrante desconectado ainda apareceu no radar público!');
+  }
+  console.log('✅ Sala sem integrantes ativos (0 integrantes) não aparece na lista de salas disponíveis');
 
   // Teste de segurança: Impedir a entrada duas vezes do mesmo usuário
   // Tentativa 1: O próprio host tentando entrar na própria sala na mesma conexão

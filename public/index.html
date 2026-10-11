@@ -99,9 +99,27 @@
           </div>
         </div>
 
-        <button id="btn-create-room" class="btn-primary">
-          Criar Sala
-        </button>
+        <div class="lobby-primary-actions">
+          <button id="btn-create-room" class="btn-primary" type="button">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Criar Sala</span>
+          </button>
+          <button id="btn-open-bot-modal" class="btn-bot-play" type="button" title="Jogar contra Inteligência Artificial">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+              <circle cx="12" cy="5" r="2"></circle>
+              <path d="M12 7v4"></path>
+              <line x1="8" y1="16" x2="8.01" y2="16"></line>
+              <line x1="16" y1="16" x2="16.01" y2="16"></line>
+            </svg>
+            <span>Jogar c/ BOT</span>
+          </button>
+        </div>
 
         <!-- LISTA DE BATALHAS PÚBLICAS EM ABERTO -->
         <div class="open-rooms-card">
@@ -169,6 +187,7 @@
           </svg>
           <span>Copiar Link</span>
         </button>
+        <div id="network-ip-display" style="display: none;"></div>
         <button id="btn-cancel-waiting-room" class="btn-secondary" style="margin-top: 8px; border-color: rgba(255, 42, 85, 0.35); color: var(--red-danger);">
           Cancelar Sala
         </button>
@@ -340,6 +359,77 @@
         </button>
         <button id="btn-gameover-lobby" class="btn-secondary" style="border-color: rgba(0, 240, 255, 0.35);">
           Voltar ao Lobby
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Batalha contra BOT (IA) -->
+  <div id="modal-bot" class="modal-overlay">
+    <div class="modal-card modal-bot-card">
+      <button id="btn-close-bot-modal-x" class="modal-close-x" aria-label="Fechar">&times;</button>
+      <div class="bot-modal-header">
+        <div class="bot-modal-icon-badge">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+            <circle cx="12" cy="5" r="2"></circle>
+            <path d="M12 7v4"></path>
+            <line x1="8" y1="16" x2="8.01" y2="16"></line>
+            <line x1="16" y1="16" x2="16.01" y2="16"></line>
+          </svg>
+        </div>
+        <h2 class="modal-title" style="color: var(--cyan); font-size: 1.25rem; margin-top: 6px;">
+          Batalha contra BOT
+        </h2>
+        <p class="lobby-subtitle" style="margin-bottom: 12px;">
+          Treino tático com Inteligência Artificial
+        </p>
+      </div>
+
+      <div class="bot-difficulty-selector">
+        <label class="form-label" style="margin-bottom: 6px;">Nível da IA</label>
+        <div class="difficulty-cards-group">
+          <div class="difficulty-card" data-difficulty="easy">
+            <div class="difficulty-card-radio"></div>
+            <div class="difficulty-card-content">
+              <div class="difficulty-card-title">
+                <span class="diff-tag easy">FÁCIL</span>
+                <strong>Recruta IA</strong>
+              </div>
+              <small class="difficulty-card-desc">Disparos exploratórios e casuais. Ideal para iniciantes.</small>
+            </div>
+          </div>
+
+          <div class="difficulty-card active" data-difficulty="medium">
+            <div class="difficulty-card-radio"></div>
+            <div class="difficulty-card-content">
+              <div class="difficulty-card-title">
+                <span class="diff-tag medium">MÉDIO</span>
+                <strong>Capitão IA</strong>
+              </div>
+              <small class="difficulty-card-desc">Modo Caçador. Foca em navios atingidos até afundá-los.</small>
+            </div>
+          </div>
+
+          <div class="difficulty-card" data-difficulty="hard">
+            <div class="difficulty-card-radio"></div>
+            <div class="difficulty-card-content">
+              <div class="difficulty-card-title">
+                <span class="diff-tag hard">DIFÍCIL</span>
+                <strong>Almirante Cyber</strong>
+              </div>
+              <small class="difficulty-card-desc">Estrategista com varredura por paridade e densidade de probabilidade.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bot-modal-actions">
+        <button id="btn-start-bot-game" class="btn-primary" style="margin-top: 14px;">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Iniciar Batalha Naval
         </button>
       </div>
     </div>
