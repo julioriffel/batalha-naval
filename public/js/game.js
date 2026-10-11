@@ -816,27 +816,35 @@
 
   if (btnStartBotGame) {
     let isStartingBot = false;
-    btnStartBotGame.addEventListener('click', async () => {
+    btnStartBotGame.addEventListener('click', async (e) => {
+      if (e) e.preventDefault();
       window.tacticalAudio.click();
       window.tacticalHaptics.click();
       if (isStartingBot) return;
       isStartingBot = true;
-      setTimeout(() => { isStartingBot = false; }, 1500);
+      setTimeout(() => { isStartingBot = false; }, 2000);
 
       if (modalBot) modalBot.classList.remove('active');
 
       state.playerName = saveAndApplyPlayerName(inputPlayerName.value.trim() || state.playerName || generateRandomCommanderName());
       state.isBotMatch = true;
 
-      await initWebSocket();
-      sendWS('create_bot_game', {
-        playerName: state.playerName,
-        difficulty: state.botDifficulty,
-        friendCode: state.friendCode,
-        persistentId: state.persistentId,
-        origin: window.location.origin
-      });
-      window.tacticalAudio.sonarPing();
+      showToast('Iniciando treinamento com BOT...', 1500);
+
+      try {
+        await initWebSocket();
+        sendWS('create_bot_game', {
+          playerName: state.playerName,
+          difficulty: state.botDifficulty || 'medium',
+          friendCode: state.friendCode,
+          persistentId: state.persistentId,
+          origin: window.location.origin
+        });
+        window.tacticalAudio.sonarPing();
+      } catch (err) {
+        console.error('Erro ao conectar para iniciar jogo contra bot:', err);
+        showToast('Erro ao conectar ao servidor. Tente novamente.');
+      }
     });
   }
 
@@ -2373,20 +2381,116 @@
     }
   }
 
-  // --- PWA SERVICE WORKER & INSTALAÇÃO ---
+  // --- PWA SERVICE WORKER & CONTROLE DE CACHE TÁTICO ---
+  const APP_VERSION = '2.5';
+  try {
+    const lastVersion = localStorage.getItem('naval_app_version');
+    if (lastVersion && lastVersion !== APP_VERSION) {
+      console.log(`[PWA] Atualização detectada: ${lastVersion} -> ${APP_VERSION}`);
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((key) => {
+            if (key !== 'batalha-naval-v2.5') caches.delete(key);
+          });
+        });
+      }
+    }
+    localStorage.setItem('naval_app_version', APP_VERSION);
+  } catch (e) {}
+
   if ('serviceWorker' in navigator) {
     const registerSW = () => {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
-        console.log('[PWA] Service Worker tático registrado com sucesso:', reg.scope);
+        console.log('[PWA] Service Worker tático registrado:', reg.scope);
+
+        // Força checagem de atualizações no servidor imediatamente
+        reg.update().catch(() => {});
+
+        // Rechecar atualizações quando o app volta a ficar visível
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            reg.update().catch(() => {});
+          }
+        });
+
+        // Detecta quando novo worker foi baixado e instalado
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA] Nova versão tática disponível! Recarregando...');
+                showToast('Nova versão tática detectada! Atualizando aplicação...', 2500);
+                setTimeout(() => {
+                  window.location.reload();
+                }, 800);
+              }
+            });
+          }
+        });
       }).catch((err) => {
         console.warn('[PWA] Falha ao registrar Service Worker:', err);
       });
     };
+
+    // Auto-reload quando novo Service Worker assume o controle dos clientes
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+
     if (document.readyState === 'complete') {
       registerSW();
     } else {
       window.addEventListener('load', registerSW);
     }
+  }
+
+  // --- BOTÕES DE ATUALIZAÇÃO FORÇADA & PURGA DE CACHE ---
+  const btnForceReload = document.getElementById('btn-force-reload');
+  const btnPurgeCacheLink = document.getElementById('btn-purge-cache-link');
+
+  async function forcePurgeAppAndReload() {
+    window.tacticalAudio.click();
+    window.tacticalHaptics.heavy();
+    showToast('Limpando cache tático e forçando atualização...', 3000);
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          try {
+            if (reg.active) {
+              reg.active.postMessage({ action: 'clearCache' });
+            }
+            await reg.unregister();
+          } catch (e) {}
+        }
+      }
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map(key => caches.delete(key)));
+      }
+    } catch (err) {
+      console.warn('Erro ao limpar caches:', err);
+    }
+
+    try {
+      sessionStorage.clear();
+    } catch (e) {}
+
+    const bust = Date.now();
+    window.location.replace(`${window.location.origin}${window.location.pathname}?v=${bust}`);
+  }
+
+  if (btnForceReload) {
+    btnForceReload.addEventListener('click', forcePurgeAppAndReload);
+  }
+  if (btnPurgeCacheLink) {
+    btnPurgeCacheLink.addEventListener('click', forcePurgeAppAndReload);
   }
 
   let deferredInstallPrompt = null;

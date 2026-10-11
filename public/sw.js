@@ -3,7 +3,7 @@
  * Caching tático offline e suporte a instalação como aplicativo nativo.
  */
 
-const CACHE_NAME = 'batalha-naval-v2.3';
+const CACHE_NAME = 'batalha-naval-v2.5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -23,7 +23,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Pré-carregando arquivos essenciais para PWA...');
+      console.log('[ServiceWorker] Pré-carregando arquivos essenciais para PWA (v2.5)...');
       return cache.addAll(STATIC_ASSETS);
     })
   );
@@ -44,6 +44,20 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Suporte a mensagens do cliente para forçar atualização ou purga de cache
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting' || (event.data && event.data.action === 'skipWaiting')) {
+    self.skipWaiting();
+  }
+  if (event.data === 'clearCache' || (event.data && event.data.action === 'clearCache')) {
+    event.waitUntil(
+      caches.keys().then((keys) => {
+        return Promise.all(keys.map((key) => caches.delete(key)));
+      })
+    );
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -52,9 +66,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-First para garantir que atualizações do jogo sejam carregadas imediatamente
+  // Network-First com validação de rede para evitar servir código defasado
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-cache' })
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
@@ -65,7 +79,7 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       })
       .catch(() => {
-        // Fallback para cache quando offline
+        // Fallback para cache apenas quando offline
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;

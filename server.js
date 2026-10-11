@@ -580,6 +580,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     const isNoCacheFile = pathname === '/' || pathname === '/index.html' || pathname === '/sw.js' || pathname === '/manifest.json';
+    const isCodeOrMarkup = isNoCacheFile || ext === '.js' || ext === '.css' || ext === '.html' || ext === '.json';
     const headers = {
       'Content-Type': contentType
     };
@@ -588,12 +589,13 @@ const server = http.createServer(async (req, res) => {
       headers['Set-Cookie'] = cookieHeaderToSet;
     }
 
-    if (isNoCacheFile) {
+    if (isCodeOrMarkup) {
       headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, proxy-revalidate';
       headers['Pragma'] = 'no-cache';
       headers['Expires'] = '0';
+      headers['Surrogate-Control'] = 'no-store';
     } else {
-      headers['Cache-Control'] = 'public, max-age=60, must-revalidate';
+      headers['Cache-Control'] = 'public, max-age=300, must-revalidate';
     }
 
     res.writeHead(200, headers);
