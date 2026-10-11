@@ -388,19 +388,28 @@
     });
   }
 
+  let isCreatingRoom = false;
+
   btnCreateRoom.addEventListener('click', async () => {
     window.tacticalAudio.click();
     window.tacticalHaptics.click();
+    if (isCreatingRoom) return;
+    isCreatingRoom = true;
+    setTimeout(() => { isCreatingRoom = false; }, 1500);
+
     state.playerName = inputPlayerName.value.trim() || 'Comandante 1';
     localStorage.setItem('naval_player_name', state.playerName);
     await initWebSocket();
     sendWS('create_room', {
       playerName: state.playerName,
       friendCode: state.friendCode,
+      persistentId: state.persistentId,
       isPublic: state.isPublicRoom,
       origin: window.location.origin
     });
   });
+
+  let isJoiningRoom = false;
 
   async function joinRoomByCode(code) {
     window.tacticalAudio.click();
@@ -410,13 +419,25 @@
       showToast('Digite o código da sala!');
       return;
     }
+
+    // Impedir a entrada na própria sala se já for anfitrião dela
+    if (state.roomCode && cleanCode === state.roomCode.toUpperCase()) {
+      showToast('Você já está nesta sala!');
+      return;
+    }
+
+    if (isJoiningRoom) return;
+    isJoiningRoom = true;
+    setTimeout(() => { isJoiningRoom = false; }, 1500);
+
     state.playerName = inputPlayerName.value.trim() || 'Comandante 2';
     localStorage.setItem('naval_player_name', state.playerName);
     await initWebSocket();
     sendWS('join_room', {
       roomCode: cleanCode,
       playerName: state.playerName,
-      friendCode: state.friendCode
+      friendCode: state.friendCode,
+      persistentId: state.persistentId
     });
   }
 
@@ -444,6 +465,10 @@
     publicRoomsContainer.innerHTML = list.map(room => {
       const hostName = escapeHtml(room.hostName || 'Comandante');
       const code = escapeHtml(room.roomCode);
+      const isMyRoom = (state.roomCode && state.roomCode.toUpperCase() === code) ||
+                       (state.persistentId && room.hostPersistentId === state.persistentId) ||
+                       (state.friendCode && room.hostFriendCode === state.friendCode);
+
       const createdTime = typeof room.createdAt === 'number' ? room.createdAt : (room.createdAt ? new Date(room.createdAt).getTime() : Date.now());
       const waitingSec = Math.max(0, Math.floor((Date.now() - createdTime) / 1000));
       let timeText = 'agora';
@@ -451,6 +476,23 @@
         timeText = `${Math.floor(waitingSec / 60)}m atrás`;
       } else if (waitingSec > 5) {
         timeText = `${waitingSec}s atrás`;
+      }
+
+      if (isMyRoom) {
+        return `
+          <div class="public-room-item my-room-item" data-code="${code}" title="Sua sala de espera">
+            <div class="public-room-info">
+              <div class="public-room-host">${hostName}</div>
+              <div class="public-room-meta">
+                <span class="room-tag-pill">#${code}</span>
+                <span class="room-my-badge">Sua Sala</span>
+                <span class="room-players-badge">${room.playerCount || 1}/${room.maxPlayers || 2}</span>
+                <span class="room-time-ago">${timeText}</span>
+              </div>
+            </div>
+            <span class="btn-my-room-label">Aguardando</span>
+          </div>
+        `;
       }
 
       return `
@@ -473,6 +515,10 @@
     publicRoomsContainer.querySelectorAll('.public-room-item').forEach(item => {
       item.addEventListener('click', () => {
         const code = item.getAttribute('data-code');
+        if (item.classList.contains('my-room-item')) {
+          showToast('Você é o anfitrião desta sala. Aguarde outro comandante entrar.');
+          return;
+        }
         joinRoomByCode(code);
       });
     });
@@ -1458,6 +1504,7 @@
       sendWS('create_room', {
         playerName: state.playerName,
         friendCode: state.friendCode,
+        persistentId: state.persistentId,
         roomCode: data.roomCode,
         origin: window.location.origin
       });

@@ -164,10 +164,16 @@ async function runTest() {
     });
   });
 
-  ws1.send(JSON.stringify({ type: 'create_room', playerName: 'Comandante Alfa', isPublic: true }));
+  ws1.send(JSON.stringify({
+    type: 'create_room',
+    playerName: 'Comandante Alfa',
+    persistentId: 'usr_test_alfa_123',
+    friendCode: 'CMD-ALFA',
+    isPublic: true
+  }));
   await p1Created;
 
-  // Verificar se a sala pública aparece na listagem
+  // Verificar se a sala pública aparece na listagem com hostPersistentId
   const afterPubRooms = await new Promise((resolve, reject) => {
     http.get(`http://localhost:${PORT}/api/rooms/public`, res => {
       let data = '';
@@ -179,7 +185,57 @@ async function runTest() {
   if (!foundPubRoom || foundPubRoom.hostName !== 'Comandante Alfa') {
     throw new Error('Sala pública não encontrada no radar /api/rooms/public');
   }
+  if (foundPubRoom.hostPersistentId !== 'usr_test_alfa_123') {
+    throw new Error('hostPersistentId não foi retornado corretamente no radar de salas');
+  }
   console.log('✅ Sala pública encontrada com sucesso no radar de partidas abertas!');
+
+  // Teste de segurança: Impedir a entrada duas vezes do mesmo usuário
+  // Tentativa 1: O próprio host tentando entrar na própria sala na mesma conexão
+  const hostDoubleJoinPromise = new Promise(resolve => {
+    const handler = msg => {
+      const data = JSON.parse(msg.toString());
+      if (data.type === 'error') {
+        ws1.off('message', handler);
+        resolve(data);
+      }
+    };
+    ws1.on('message', handler);
+  });
+  ws1.send(JSON.stringify({
+    type: 'join_room',
+    roomCode,
+    playerName: 'Comandante Alfa',
+    persistentId: 'usr_test_alfa_123',
+    friendCode: 'CMD-ALFA'
+  }));
+  const hostDoubleJoinResult = await hostDoubleJoinPromise;
+  if (!hostDoubleJoinResult.message.includes('Não é permitido entrar duas vezes')) {
+    throw new Error(`Esperava bloqueio de entrada dupla do host, mas recebeu: ${JSON.stringify(hostDoubleJoinResult)}`);
+  }
+  console.log('✅ Bloqueio de entrada do mesmo host na mesma conexão validado com sucesso');
+
+  // Tentativa 2: Outra aba / conexão com o mesmo persistentId tentando entrar na mesma sala
+  const wsDup = new WebSocket(`ws://localhost:${PORT}`);
+  await new Promise(resolve => wsDup.on('open', resolve));
+  const persistentDupPromise = new Promise(resolve => {
+    wsDup.on('message', msg => {
+      const data = JSON.parse(msg.toString());
+      if (data.type === 'error') resolve(data);
+    });
+  });
+  wsDup.send(JSON.stringify({
+    type: 'join_room',
+    roomCode,
+    playerName: 'Comandante Alfa Aba 2',
+    persistentId: 'usr_test_alfa_123'
+  }));
+  const persistentDupResult = await persistentDupPromise;
+  if (!persistentDupResult.message.includes('Não é permitido entrar duas vezes')) {
+    throw new Error(`Esperava bloqueio por persistentId duplicado, mas recebeu: ${JSON.stringify(persistentDupResult)}`);
+  }
+  console.log('✅ Bloqueio de entrada duplicada por persistentId (outra aba) validado com sucesso');
+  wsDup.close();
 
   // 3. Conectar Jogador 2
   const ws2 = new WebSocket(`ws://localhost:${PORT}`);

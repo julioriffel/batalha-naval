@@ -610,6 +610,7 @@ function getPublicWaitingRooms() {
           roomCode: code,
           hostName: host.name,
           hostFriendCode: host.friendCode || null,
+          hostPersistentId: host.persistentId || null,
           playerCount: room.players.length,
           maxPlayers: 2,
           createdAt: typeof room.createdAt === 'number' ? room.createdAt : (room.createdAt ? new Date(room.createdAt).getTime() : Date.now())
@@ -746,8 +747,22 @@ wss.on('connection', ws => {
         const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
         const playerName = (payload.playerName || 'Comandante 1').trim().substring(0, 15);
         const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
+        const persistentId = (payload.persistentId || '').trim() || null;
         const isPublic = payload.isPublic !== false; // Padrão pública a menos que venha false
         ws.friendCode = friendCode;
+
+        // Se este jogador já estava em uma sala aguardando solo, limpa para evitar duplicatas no radar
+        if (persistentId || friendCode) {
+          for (const [code, r] of rooms.entries()) {
+            if (r.state === 'waiting' && Array.isArray(r.players) && r.players.length === 1) {
+              const host = r.players[0];
+              if ((persistentId && host.persistentId === persistentId) || (friendCode && host.friendCode === friendCode)) {
+                rooms.delete(code);
+                if (r.isPublic) broadcastPublicRooms();
+              }
+            }
+          }
+        }
 
         // Se o cliente enviar seu origin (ex: https://batalha.bolsadedados.com.br), usa ele; caso contrário, IP local
         const origin = (payload.origin || '').replace(/\/$/, '') || `http://${LOCAL_IP}:${PORT}`;
@@ -774,6 +789,7 @@ wss.on('connection', ws => {
               id: playerId,
               name: playerName,
               friendCode,
+              persistentId,
               ws,
               ready: false,
               ships: [],
@@ -797,6 +813,7 @@ wss.on('connection', ws => {
           playerId,
           playerName,
           friendCode,
+          persistentId,
           isPublic,
           joinUrl,
           qrDataUrl,
@@ -815,6 +832,7 @@ wss.on('connection', ws => {
         const roomCode = (payload.roomCode || '').toUpperCase().trim();
         const playerName = (payload.playerName || 'Comandante 2').trim().substring(0, 15);
         const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
+        const persistentId = (payload.persistentId || '').trim() || null;
         ws.friendCode = friendCode;
         const room = rooms.get(roomCode);
 
@@ -825,11 +843,27 @@ wss.on('connection', ws => {
           return send(ws, 'error', { message: 'Esta sala já está cheia com 2 jogadores.' });
         }
 
+        // Validação: Impedir a entrada duas vezes do mesmo usuário na mesma sala
+        const isAlreadyInRoom = room.players.some(p => {
+          if (p.ws === ws) return true;
+          if (currentPlayerId && p.id === currentPlayerId) return true;
+          if (persistentId && p.persistentId && p.persistentId === persistentId) return true;
+          if (friendCode && p.friendCode && p.friendCode === friendCode) return true;
+          return false;
+        });
+
+        if (isAlreadyInRoom) {
+          return send(ws, 'error', {
+            message: 'Você já está nesta sala! Não é permitido entrar duas vezes na mesma partida.'
+          });
+        }
+
         const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
         const newPlayer = {
           id: playerId,
           name: playerName,
           friendCode,
+          persistentId,
           ws,
           ready: false,
           ships: [],

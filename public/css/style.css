@@ -2211,6 +2211,41 @@ body {
   box-shadow: var(--cyan-glow);
 }
 
+.public-room-item.my-room-item {
+  border-color: rgba(255, 170, 0, 0.45);
+  background: rgba(255, 170, 0, 0.04);
+}
+
+.public-room-item.my-room-item:hover {
+  border-color: #ffaa00;
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.25);
+}
+
+.room-my-badge {
+  background: rgba(255, 170, 0, 0.18);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.35);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.btn-my-room-label {
+  background: rgba(255, 170, 0, 0.15);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 /* Tag de privacidade na tela de espera */
 .waiting-privacy-tag {
   display: inline-block;
