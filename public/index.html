@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=2.3">
 </head>
 <body>
 
@@ -484,12 +484,21 @@
           <span class="add-friend-hint">Código ou Link</span>
         </label>
         <div class="add-friend-form">
-          <input type="text" id="input-add-friend-code" class="input-tactical input-friend-code" placeholder="Código (ex: CMD-XXXX) ou cole o link" maxlength="120" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+          <div class="input-friend-wrapper">
+            <input type="text" id="input-add-friend-code" class="input-tactical input-friend-code" placeholder="Código (ex: CMD-XXXX) ou cole o link" maxlength="120" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+            <button type="button" id="btn-paste-friend-code" class="btn-paste-inline" title="Colar da área de transferência">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px;">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Colar</span>
+            </button>
+          </div>
           <button id="btn-submit-add-friend" class="btn-primary btn-add-friend" type="button">
-            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; margin-right: 4px;">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 6px;">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
             </svg>
-            Adicionar
+            Adicionar aos Amigos
           </button>
         </div>
       </div>
@@ -664,8 +673,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/audio.js"></script>
-  <script src="/js/haptics.js"></script>
-  <script src="/js/game.js"></script>
+  <script src="/js/audio.js?v=2.3"></script>
+  <script src="/js/haptics.js?v=2.3"></script>
+  <script src="/js/game.js?v=2.3"></script>
 </body>
 </html>

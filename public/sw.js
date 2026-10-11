@@ -3,7 +3,7 @@
  * Caching tático offline e suporte a instalação como aplicativo nativo.
  */
 
-const CACHE_NAME = 'batalha-naval-v2.1';
+const CACHE_NAME = 'batalha-naval-v2.3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

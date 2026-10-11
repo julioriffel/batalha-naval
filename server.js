@@ -419,6 +419,17 @@ const server = http.createServer(async (req, res) => {
       savePlayers(playersData);
     }
 
+    // Notifica em tempo real o comandante solicitante se estiver online
+    wss.clients.forEach(cWs => {
+      const matchCode = cWs.friendCode && cWs.friendCode === requesterCode;
+      const matchPersistent = requester && requester.persistentId && cWs.persistentId && cWs.persistentId === requester.persistentId;
+      if (matchCode || matchPersistent) {
+        send(cWs, 'friend_declined_notice', {
+          fromCode: myCode
+        });
+      }
+    });
+
     return sendJson(200, { success: true });
   }
 
@@ -433,6 +444,18 @@ const server = http.createServer(async (req, res) => {
       myPlayer.friends = myPlayer.friends.filter(c => c !== targetCode);
       savePlayers(playersData);
     }
+
+    // Notifica em tempo real o amigo removido se estiver online
+    const targetPlayer = playersData[targetCode];
+    wss.clients.forEach(cWs => {
+      const matchCode = cWs.friendCode && cWs.friendCode === targetCode;
+      const matchPersistent = targetPlayer && targetPlayer.persistentId && cWs.persistentId && cWs.persistentId === targetPlayer.persistentId;
+      if (matchCode || matchPersistent) {
+        send(cWs, 'friend_removed_notice', {
+          fromCode: myCode
+        });
+      }
+    });
 
     return sendJson(200, { success: true });
   }
@@ -740,6 +763,19 @@ function generateCommanderCode() {
   }
   const code = `CMD-${rand}`;
   return playersData[code] ? generateCommanderCode() : code;
+}
+
+function attachWsCommander(ws, friendCode, persistentId) {
+  if (friendCode) ws.friendCode = String(friendCode).trim().toUpperCase();
+  if (persistentId) ws.persistentId = String(persistentId).trim();
+  if (ws.persistentId && !ws.friendCode) {
+    const p = Object.values(playersData).find(x => x.persistentId === ws.persistentId);
+    if (p) ws.friendCode = p.code;
+  }
+  if (ws.friendCode && !ws.persistentId) {
+    const p = playersData[ws.friendCode];
+    if (p && p.persistentId) ws.persistentId = p.persistentId;
+  }
 }
 
 function readJsonBody(req) {
@@ -1403,6 +1439,10 @@ wss.on('connection', (ws, req) => {
       const payload = JSON.parse(message.toString());
       const { type } = payload;
 
+      if (payload.friendCode || payload.persistentId) {
+        attachWsCommander(ws, payload.friendCode, payload.persistentId);
+      }
+
       // 0. CONSULTAR RANKING
       if (type === 'get_leaderboard') {
         return send(ws, 'leaderboard_data', {
@@ -1419,10 +1459,7 @@ wss.on('connection', (ws, req) => {
 
       // 0.2 REGISTRAR USUÁRIO NO WEBSOCKET (SINCRONIZAÇÃO EM TEMPO REAL)
       if (type === 'register_user') {
-        const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
-        const persistentId = (payload.persistentId || '').trim() || null;
-        if (friendCode) ws.friendCode = friendCode;
-        if (persistentId) ws.persistentId = persistentId;
+        attachWsCommander(ws, payload.friendCode, payload.persistentId);
         return;
       }
 

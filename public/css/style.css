@@ -2044,7 +2044,7 @@ body {
 
 /* Add Friend Section & Form */
 .add-friend-section {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   width: 100%;
 }
 
@@ -2052,16 +2052,16 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--cyan);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .add-friend-hint {
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--text-dim);
   font-weight: 500;
   letter-spacing: 0.3px;
@@ -2070,59 +2070,88 @@ body {
 
 .add-friend-form {
   display: flex;
-  gap: 8px;
-  align-items: stretch;
+  flex-direction: column;
+  gap: 10px;
   width: 100%;
 }
 
-.add-friend-form .input-friend-code,
-.add-friend-form input {
-  flex: 1 1 auto;
-  min-width: 0;
-  width: auto;
-  font-size: 0.96rem;
+.input-friend-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.add-friend-form .input-friend-code {
+  width: 100% !important;
+  font-size: 1rem !important;
   font-weight: 700;
-  letter-spacing: 0.8px;
-  padding: 11px 14px;
-  min-height: 46px;
+  letter-spacing: 1px;
+  padding: 13px 80px 13px 14px !important;
+  min-height: 50px !important;
   background: var(--bg-dark);
-  border: 1px solid rgba(0, 240, 255, 0.35);
+  border: 1.5px solid rgba(0, 240, 255, 0.4);
   border-radius: var(--radius-sm);
   color: #fff;
   box-sizing: border-box;
   transition: all 0.2s ease;
 }
 
-.add-friend-form .input-friend-code::placeholder,
-.add-friend-form input::placeholder {
-  font-size: 0.84rem;
+.add-friend-form .input-friend-code::placeholder {
+  font-size: 0.86rem;
   font-weight: 500;
   letter-spacing: normal;
   color: var(--text-dim);
   opacity: 0.75;
 }
 
-.add-friend-form .input-friend-code:focus,
-.add-friend-form input:focus {
+.add-friend-form .input-friend-code:focus {
   border-color: var(--cyan);
-  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+}
+
+.btn-paste-inline {
+  position: absolute;
+  right: 6px;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  color: var(--cyan);
+  border-radius: var(--radius-sm);
+  padding: 7px 11px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-paste-inline:hover, .btn-paste-inline:active {
+  background: rgba(0, 240, 255, 0.28);
+  border-color: var(--cyan);
+  color: #fff;
+  transform: scale(0.96);
 }
 
 .add-friend-form .btn-add-friend,
 .add-friend-form .btn-primary {
-  width: auto;
-  min-width: 115px;
-  flex: 0 0 auto;
-  min-height: 46px;
-  padding: 0 16px;
-  font-size: 0.88rem;
-  font-weight: 800;
-  letter-spacing: 0.8px;
+  width: 100% !important;
+  min-height: 48px !important;
+  padding: 12px 18px !important;
+  font-size: 0.94rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 1px !important;
   white-space: nowrap;
   box-sizing: border-box;
-  display: inline-flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 119, 255, 0.4);
 }
 
 /* Friends List */
@@ -2362,6 +2391,58 @@ body {
 .btn-decline-request:hover {
   color: var(--red-danger);
   border-color: var(--red-danger);
+}
+
+.friends-subgroup-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.friends-subgroup-title.incoming-title {
+  color: #ffaa00;
+}
+
+.friends-subgroup-title.friends-title {
+  color: var(--cyan);
+}
+
+.badge-incoming {
+  background: rgba(255, 170, 0, 0.2);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.4);
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.friend-code-chip {
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: #ffaa00;
+  background: rgba(255, 170, 0, 0.12);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.friends-tip-box {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px dashed rgba(0, 240, 255, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 6px;
 }
 
 /* --- PRIVACIDADE DA SALA (PÚBLICA / PRIVADA) --- */
@@ -3020,19 +3101,26 @@ button:active,
     min-height: 38px;
   }
 
-  .add-friend-form .btn-add-friend,
-  .add-friend-form .btn-primary {
-    min-width: 95px;
-    padding: 0 12px;
-    font-size: 0.82rem;
-    min-height: 42px;
+  .add-friend-form {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
   }
 
-  .add-friend-form .input-friend-code,
-  .add-friend-form input {
-    font-size: 0.88rem;
-    padding: 10px 12px;
-    min-height: 42px;
+  .add-friend-form .input-friend-code {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 1rem !important;
+    padding: 12px 76px 12px 14px !important;
+  }
+
+  .add-friend-form .btn-add-friend,
+  .add-friend-form .btn-primary {
+    width: 100% !important;
+    min-height: 46px !important;
+    font-size: 0.92rem !important;
+    display: flex !important;
+    justify-content: center !important;
   }
 }
 
@@ -3050,15 +3138,24 @@ button:active,
     padding: 4px 6px;
   }
 
-  .add-friend-form .btn-add-friend,
-  .add-friend-form .btn-primary {
-    min-width: 78px;
-    padding: 0 8px;
-    font-size: 0.76rem;
+  .add-friend-form .input-friend-code {
+    min-height: 46px !important;
+    font-size: 0.95rem !important;
+    padding: 11px 70px 11px 12px !important;
   }
 
-  .add-friend-form .btn-add-friend svg {
-    display: none;
+  .btn-paste-inline {
+    padding: 6px 8px;
+    font-size: 0.72rem;
+  }
+
+  .add-friend-form .btn-add-friend,
+  .add-friend-form .btn-primary {
+    width: 100% !important;
+    min-height: 44px !important;
+    font-size: 0.88rem !important;
+    display: flex !important;
+    justify-content: center !important;
   }
 
   .grid-container {

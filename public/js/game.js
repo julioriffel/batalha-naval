@@ -486,8 +486,13 @@
         if (msg.isMutual) {
           showToast(`Comandante ${msg.fromName} retribuiu seu pedido! Vocês agora são amigos mútuos.`, 5000);
         } else {
-          showToast(`Pedido de amizade recebido do Comandante ${msg.fromName}! Toque em Amigos para responder.`, 5500);
+          showToast(`Pedido de amizade recebido do Comandante ${msg.fromName}! Toque em Amigos para aceitar ou recusar.`, 5500);
         }
+        fetchAndRenderFriends();
+        break;
+
+      case 'friend_declined_notice':
+      case 'friend_removed_notice':
         fetchAndRenderFriends();
         break;
 
@@ -988,12 +993,14 @@
   setInterval(() => {
     if (screens.lobby && screens.lobby.classList.contains('active')) {
       fetchAndRenderPublicRooms();
+      fetchAndRenderFriends();
     }
   }, 4000);
 
   // Sincroniza imediatamente quando a aba volta a ficar visível
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
+      fetchAndRenderFriends();
       if (screens.lobby && screens.lobby.classList.contains('active')) {
         fetchAndRenderPublicRooms();
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
@@ -1806,7 +1813,6 @@
     const container = document.getElementById('friends-list-container');
     const badge = document.getElementById('friends-count-badge');
     const incomingSection = document.getElementById('incoming-requests-section');
-    const incomingContainer = document.getElementById('incoming-requests-container');
     const incomingBadge = document.getElementById('incoming-requests-badge');
     const headerPip = document.getElementById('header-friends-pip');
     const lobbyPip = document.getElementById('lobby-friends-pip');
@@ -1822,98 +1828,146 @@
       const pendingCount = incomingRequests.length;
       if (headerPip) headerPip.style.display = pendingCount > 0 ? 'block' : 'none';
       if (lobbyPip) lobbyPip.style.display = pendingCount > 0 ? 'block' : 'none';
+      if (incomingBadge) incomingBadge.textContent = pendingCount;
+      if (incomingSection) incomingSection.style.display = 'none'; // Unificado diretamente na lista de amigos
 
-      // Renderiza Seção de Pedidos Recebidos
-      if (incomingSection && incomingContainer) {
+      if (!container) return;
+
+      // Atualiza badge de contagem de amigos
+      if (badge) {
         if (pendingCount > 0) {
-          incomingSection.style.display = 'block';
-          if (incomingBadge) incomingBadge.textContent = pendingCount;
-          incomingContainer.innerHTML = incomingRequests.map(req => {
-            return `
-              <div class="incoming-request-item">
-                <div class="friend-info">
-                  <div class="friend-name-row">
-                    <span class="friend-name">${escapeHtml(req.name)}</span>
-                    <span style="font-size:0.75rem; color:#ffaa00;">${req.code}</span>
-                  </div>
-                  <div class="friend-badges">
-                    <span class="badge-pending">Quer ser seu amigo</span>
-                    ${req.pushEnabled ? '<span class="badge-push-on">Push Ativo</span>' : ''}
-                  </div>
-                </div>
-                <div class="friend-actions">
-                  <button class="btn-accept-request" data-code="${req.code}" title="Aceitar pedido de amizade">
-                    Aceitar
-                  </button>
-                  <button class="btn-decline-request" data-code="${req.code}" title="Recusar pedido">
-                    Recusar
-                  </button>
-                </div>
-              </div>
-            `;
-          }).join('');
-
-          incomingContainer.querySelectorAll('.btn-accept-request').forEach(btn => {
-            btn.addEventListener('click', () => {
-              const code = btn.getAttribute('data-code');
-              addFriendByCode(code);
-            });
-          });
-
-          incomingContainer.querySelectorAll('.btn-decline-request').forEach(btn => {
-            btn.addEventListener('click', () => {
-              const code = btn.getAttribute('data-code');
-              declineFriendRequest(code);
-            });
-          });
+          badge.textContent = friends.length > 0 ? `${friends.length} (+${pendingCount})` : `${pendingCount} novo${pendingCount > 1 ? 's' : ''}`;
+          badge.style.background = 'rgba(255, 170, 0, 0.25)';
+          badge.style.color = '#ffaa00';
+          badge.style.border = '1px solid rgba(255, 170, 0, 0.5)';
         } else {
-          incomingSection.style.display = 'none';
+          badge.textContent = friends.length;
+          badge.style.background = 'rgba(0, 240, 255, 0.2)';
+          badge.style.color = 'var(--cyan)';
+          badge.style.border = 'none';
         }
       }
 
-      if (!container) return;
-      if (badge) badge.textContent = friends.length;
-
-      if (friends.length === 0) {
+      // Se não há nenhum amigo e nenhum pedido recebido
+      if (friends.length === 0 && incomingRequests.length === 0) {
         container.innerHTML = `
           <div class="friends-empty-hint">
             Você ainda não adicionou nenhum comandante amigo.<br>
-            Compartilhe seu código <strong>${state.friendCode || '...'}</strong> ou adicione adversários após as batalhas!
+            Compartilhe seu código <strong>${escapeHtml(state.friendCode || '...')}</strong> ou adicione adversários após as batalhas!
           </div>
         `;
         return;
       }
 
-      container.innerHTML = friends.map(f => {
-        const canChallenge = f.isMutual && f.pushEnabled;
-        const challengeTitle = !f.isMutual 
-          ? 'Apenas amigos mútuos podem ser desafiados via push. Ele também precisa adicionar seu código.' 
-          : (!f.pushEnabled ? 'O amigo precisa ativar notificações push no app.' : 'Chamar para uma Batalha Naval agora!');
+      let html = '';
 
-        return `
-          <div class="friend-item ${f.isMutual ? 'mutual' : ''}">
-            <div class="friend-info">
-              <div class="friend-name-row">
-                <span class="friend-name">${escapeHtml(f.name)}</span>
-                <span style="font-size:0.75rem; color:var(--text-dim);">${f.code}</span>
-              </div>
-              <div class="friend-badges">
-                ${f.isMutual ? '<span class="badge-mutual">Mútuo</span>' : '<span class="badge-pending">Pendente</span>'}
-                ${f.pushEnabled ? '<span class="badge-push-on">Push Ativo</span>' : '<span class="badge-push-off">Sem Push</span>'}
-              </div>
-            </div>
-            <div class="friend-actions">
-              <button class="btn-challenge" ${canChallenge ? '' : 'disabled'} title="${challengeTitle}" data-code="${f.code}">
-                Desafiar
-              </button>
-              <button class="btn-remove-friend" title="Remover amigo" data-code="${f.code}">
-                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              </button>
-            </div>
+      // 1. PEDIDOS DE AMIZADE RECEBIDOS (aparecem destacados diretamente no topo da lista)
+      if (incomingRequests.length > 0) {
+        html += `
+          <div class="friends-subgroup-title incoming-title">
+            <span class="notification-pip" style="position:static; display:inline-block; width:8px; height:8px;"></span>
+            Pedidos de Amizade Recebidos (${incomingRequests.length})
           </div>
         `;
-      }).join('');
 
+        html += incomingRequests.map(req => {
+          return `
+            <div class="incoming-request-item friend-item incoming">
+              <div class="friend-info">
+                <div class="friend-name-row">
+                  <span class="friend-name">${escapeHtml(req.name)}</span>
+                  <span class="friend-code-chip">${escapeHtml(req.code)}</span>
+                </div>
+                <div class="friend-badges">
+                  <span class="badge-incoming">Quer ser seu amigo</span>
+                  ${req.pushEnabled ? '<span class="badge-push-on">Push Ativo</span>' : ''}
+                </div>
+              </div>
+              <div class="friend-actions">
+                <button class="btn-accept-request" data-code="${escapeHtml(req.code)}" title="Aceitar pedido de amizade">
+                  <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 13px; height: 13px; margin-right: 3px;"><polyline points="20 6 9 17 4 12"/></svg>
+                  Aceitar
+                </button>
+                <button class="btn-decline-request" data-code="${escapeHtml(req.code)}" title="Recusar pedido">
+                  <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px; margin-right: 2px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Recusar
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 2. LISTA DE AMIGOS ADICIONADOS / MÚTUOS
+      if (friends.length > 0) {
+        if (incomingRequests.length > 0) {
+          html += `
+            <div class="friends-subgroup-title friends-title" style="margin-top: 10px;">
+              Seus Amigos (${friends.length})
+            </div>
+          `;
+        }
+
+        html += friends.map(f => {
+          const canChallenge = f.isMutual && f.pushEnabled;
+          const challengeTitle = !f.isMutual 
+            ? 'Apenas amigos mútuos podem ser desafiados via push. Ele também precisa adicionar seu código.' 
+            : (!f.pushEnabled ? 'O amigo precisa ativar notificações push no app.' : 'Chamar para uma Batalha Naval agora!');
+
+          return `
+            <div class="friend-item ${f.isMutual ? 'mutual' : 'pending'}">
+              <div class="friend-info">
+                <div class="friend-name-row">
+                  <span class="friend-name">${escapeHtml(f.name)}</span>
+                  <span style="font-size:0.75rem; color:var(--text-dim); font-family: monospace;">${escapeHtml(f.code)}</span>
+                </div>
+                <div class="friend-badges">
+                  ${f.isMutual ? '<span class="badge-mutual">Mútuo</span>' : '<span class="badge-pending">Convite Enviado</span>'}
+                  ${f.pushEnabled ? '<span class="badge-push-on">Push Ativo</span>' : '<span class="badge-push-off">Sem Push</span>'}
+                </div>
+              </div>
+              <div class="friend-actions">
+                <button class="btn-challenge" ${canChallenge ? '' : 'disabled'} title="${challengeTitle}" data-code="${escapeHtml(f.code)}">
+                  Desafiar
+                </button>
+                <button class="btn-remove-friend" title="${f.isMutual ? 'Remover amigo' : 'Cancelar convite'}" data-code="${escapeHtml(f.code)}">
+                  <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else if (incomingRequests.length > 0) {
+        html += `
+          <div class="friends-tip-box">
+            Toque em <strong>Aceitar</strong> para confirmar a amizade e liberar desafios de batalha em tempo real!
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+
+      // Event listeners para Aceitar
+      container.querySelectorAll('.btn-accept-request').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const code = btn.getAttribute('data-code');
+          btn.disabled = true;
+          btn.textContent = 'Aceitando...';
+          await addFriendByCode(code);
+        });
+      });
+
+      // Event listeners para Recusar
+      container.querySelectorAll('.btn-decline-request').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const code = btn.getAttribute('data-code');
+          btn.disabled = true;
+          btn.textContent = 'Recusando...';
+          await declineFriendRequest(code);
+        });
+      });
+
+      // Event listeners para Desafiar
       container.querySelectorAll('.btn-challenge').forEach(btn => {
         btn.addEventListener('click', () => {
           const code = btn.getAttribute('data-code');
@@ -1921,6 +1975,7 @@
         });
       });
 
+      // Event listeners para Remover
       container.querySelectorAll('.btn-remove-friend').forEach(btn => {
         btn.addEventListener('click', () => {
           const code = btn.getAttribute('data-code');
@@ -2136,25 +2191,43 @@
   const btnSubmitAddFriend = document.getElementById('btn-submit-add-friend');
   const inputAddFriendCode = document.getElementById('input-add-friend-code');
 
+  let friendsPollingTimer = null;
+
   function openFriendsModal() {
     window.tacticalAudio.click();
     if (modalFriends) modalFriends.classList.add('active');
     fetchAndRenderFriends();
+
+    if (friendsPollingTimer) clearInterval(friendsPollingTimer);
+    friendsPollingTimer = setInterval(() => {
+      if (modalFriends && modalFriends.classList.contains('active')) {
+        fetchAndRenderFriends();
+      } else {
+        clearInterval(friendsPollingTimer);
+        friendsPollingTimer = null;
+      }
+    }, 3000);
+  }
+
+  function closeFriendsModal() {
+    window.tacticalAudio.click();
+    if (modalFriends) modalFriends.classList.remove('active');
+    if (friendsPollingTimer) {
+      clearInterval(friendsPollingTimer);
+      friendsPollingTimer = null;
+    }
   }
 
   if (btnOpenFriends) btnOpenFriends.addEventListener('click', openFriendsModal);
   if (btnLobbyFriends) btnLobbyFriends.addEventListener('click', openFriendsModal);
 
   if (btnCloseFriendsModal) {
-    btnCloseFriendsModal.addEventListener('click', () => {
-      window.tacticalAudio.click();
-      if (modalFriends) modalFriends.classList.remove('active');
-    });
+    btnCloseFriendsModal.addEventListener('click', closeFriendsModal);
   }
 
   if (modalFriends) {
     modalFriends.addEventListener('click', (e) => {
-      if (e.target === modalFriends) modalFriends.classList.remove('active');
+      if (e.target === modalFriends) closeFriendsModal();
     });
   }
 
@@ -2211,6 +2284,29 @@
         inputAddFriendCode.value = extracted;
       }
     });
+
+    const btnPasteFriendCode = document.getElementById('btn-paste-friend-code');
+    if (btnPasteFriendCode) {
+      btnPasteFriendCode.addEventListener('click', async () => {
+        window.tacticalAudio.click();
+        try {
+          if (navigator.clipboard && navigator.clipboard.readText) {
+            const clipText = await navigator.clipboard.readText();
+            if (clipText && clipText.trim()) {
+              const extracted = extractFriendCode(clipText.trim());
+              inputAddFriendCode.value = extracted || clipText.trim();
+              showToast('Código colado!');
+              inputAddFriendCode.focus();
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('Clipboard read error:', err);
+        }
+        inputAddFriendCode.focus();
+        showToast('Cole o código no campo.');
+      });
+    }
 
     btnSubmitAddFriend.addEventListener('click', () => {
       window.tacticalAudio.click();
