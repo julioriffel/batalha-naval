@@ -24,6 +24,10 @@
         <circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="m12 12 7-7"/><circle cx="12" cy="12" r="2"/>
       </svg>
       <span class="brand-title">Batalha Naval</span>
+      <div id="hud-room-badge" class="hud-room-badge" style="display: none;" title="Sala de combate ativa">
+        <span class="hud-room-prefix">SALA</span>
+        <strong id="hud-room-code-text" class="hud-room-code">----</strong>
+      </div>
     </div>
     <div class="hud-actions">
       <button id="btn-open-friends" class="icon-btn friends-btn" title="Amigos" aria-label="Amigos">
@@ -61,14 +65,6 @@
     <div class="turn-banner-content">
       <div id="turn-banner-main" class="turn-banner-title">CENTRAL PRONTA</div>
       <div id="turn-banner-sub" class="turn-banner-subtitle">Aguardando batalha</div>
-    </div>
-  </div>
-
-  <!-- Turn Announcement Splash -->
-  <div id="turn-splash-overlay" class="turn-splash-overlay">
-    <div id="turn-splash-card" class="turn-splash-card">
-      <div id="turn-splash-title" class="turn-splash-title">SEU TURNO</div>
-      <div id="turn-splash-desc" class="turn-splash-desc">Selecione uma coordenada no radar</div>
     </div>
   </div>
 
@@ -155,7 +151,11 @@
         <h2 class="lobby-hero-title">Aguardando Oponente</h2>
 
         <div class="room-badge" id="display-room-code">----</div>
-        <div id="waiting-privacy-badge" class="waiting-privacy-tag">Sala Pública</div>
+        <div id="waiting-privacy-badge" class="waiting-privacy-tag">Sala Pública • Aberta no radar</div>
+        <div class="waiting-participants-pill">
+          <span class="radar-live-blip"></span>
+          <span id="waiting-participants-text">1/2 Jogadores</span>
+        </div>
 
         <div class="qr-container">
           <img id="qr-img" class="qr-image" src="" alt="QR Code">
@@ -176,6 +176,10 @@
     <!-- SCREEN 3: SHIP PLACEMENT -->
     <section id="screen-placement" class="screen">
       <div class="placement-header">
+        <div class="room-indicator-bar">
+          <span class="room-tag-pill">SALA #<strong id="placement-room-code">----</strong></span>
+          <span class="room-players-badge">2/2 Jogadores</span>
+        </div>
         <p class="placement-instructions" id="placement-status-text">
           Posicione a frota (0/5)
         </p>
@@ -224,6 +228,12 @@
 
     <!-- SCREEN 4: BATTLE COMBAT -->
     <section id="screen-battle" class="screen">
+
+      <!-- Battle Room Indicator -->
+      <div class="battle-room-status-bar">
+        <span class="room-tag-pill">SALA #<strong id="battle-room-code">----</strong></span>
+        <span class="room-players-badge">2/2 Jogadores</span>
+      </div>
 
       <!-- Duel Score Bar -->
       <div id="duel-score-bar" class="duel-score-bar">

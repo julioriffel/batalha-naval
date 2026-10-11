@@ -610,6 +610,8 @@ function getPublicWaitingRooms() {
           roomCode: code,
           hostName: host.name,
           hostFriendCode: host.friendCode || null,
+          playerCount: room.players.length,
+          maxPlayers: 2,
           createdAt: typeof room.createdAt === 'number' ? room.createdAt : (room.createdAt ? new Date(room.createdAt).getTime() : Date.now())
         });
       }

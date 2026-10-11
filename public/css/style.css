@@ -113,6 +113,31 @@ body {
   text-transform: uppercase;
 }
 
+.hud-room-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.74rem;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+}
+
+.hud-room-prefix {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+
+.hud-room-code {
+  color: var(--cyan);
+  font-weight: 800;
+}
+
 .hud-actions {
   display: flex;
   align-items: center;
@@ -2196,7 +2221,43 @@ body {
   padding: 3px 10px;
   border-radius: 12px;
   margin-top: -4px;
+  margin-bottom: 8px;
+}
+
+.waiting-participants-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.12);
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  padding: 4px 12px;
+  border-radius: 12px;
   margin-bottom: 12px;
+}
+
+.room-players-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 255, 136, 0.12);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.room-indicator-bar, .battle-room-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 /* ==========================================================================

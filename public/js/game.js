@@ -172,16 +172,39 @@
     }
   }
 
+  // --- Controle Visual do Código da Sala Ativa ---
+  function updateActiveRoomCodeDisplay(code) {
+    state.roomCode = code || null;
+    const hudBadge = document.getElementById('hud-room-badge');
+    const hudCode = document.getElementById('hud-room-code-text');
+    const placementCode = document.getElementById('placement-room-code');
+    const battleCode = document.getElementById('battle-room-code');
+    const waitingCode = document.getElementById('display-room-code');
+
+    if (code) {
+      if (hudCode) hudCode.textContent = code;
+      if (hudBadge) hudBadge.style.display = 'inline-flex';
+      if (placementCode) placementCode.textContent = code;
+      if (battleCode) battleCode.textContent = code;
+      if (waitingCode) waitingCode.textContent = code;
+    } else {
+      if (hudBadge) hudBadge.style.display = 'none';
+      if (hudCode) hudCode.textContent = '----';
+      if (placementCode) placementCode.textContent = '----';
+      if (battleCode) battleCode.textContent = '----';
+      if (waitingCode) waitingCode.textContent = '----';
+    }
+  }
+
   // --- Message Dispatcher ---
   function handleServerMessage(msg) {
     console.log('[Radar Naval In]', msg);
 
     switch (msg.type) {
       case 'room_created':
-        state.roomCode = msg.roomCode;
+        updateActiveRoomCodeDisplay(msg.roomCode);
         state.playerId = msg.playerId;
         state.isHost = true;
-        document.getElementById('display-room-code').textContent = msg.roomCode;
         document.getElementById('qr-img').src = msg.qrDataUrl;
         document.getElementById('network-ip-display').textContent = msg.joinUrl;
 
@@ -209,7 +232,7 @@
         break;
 
       case 'room_joined':
-        state.roomCode = msg.roomCode;
+        updateActiveRoomCodeDisplay(msg.roomCode);
         state.playerId = msg.playerId;
         state.isHost = false;
         state.opponentName = msg.opponentName;
@@ -217,10 +240,11 @@
           state.opponentFriendCode = msg.opponentFriendCode;
           updateOpponentFriendButtons();
         }
-        showToast(`Conectado à sala de ${msg.opponentName}`);
+        showToast(`Conectado à sala #${msg.roomCode}`);
         break;
 
       case 'opponent_joined':
+        if (state.roomCode) updateActiveRoomCodeDisplay(state.roomCode);
         state.opponentName = msg.opponentName;
         if (msg.opponentFriendCode) {
           state.opponentFriendCode = msg.opponentFriendCode;
@@ -231,6 +255,7 @@
 
       case 'start_placement':
         if (msg.shipSpecs) state.shipSpecs = msg.shipSpecs;
+        if (state.roomCode) updateActiveRoomCodeDisplay(state.roomCode);
         initPlacementPhase();
         showScreen('placement');
         window.tacticalAudio.sonarPing();
@@ -247,6 +272,7 @@
         break;
 
       case 'battle_started':
+        if (state.roomCode) updateActiveRoomCodeDisplay(state.roomCode);
         if (msg.opponentFriendCode) {
           state.opponentFriendCode = msg.opponentFriendCode;
           updateOpponentFriendButtons();
@@ -433,6 +459,7 @@
             <div class="public-room-host">${hostName}</div>
             <div class="public-room-meta">
               <span class="room-tag-pill">#${code}</span>
+              <span class="room-players-badge">${room.playerCount || 1}/${room.maxPlayers || 2}</span>
               <span class="room-time-ago">${timeText}</span>
             </div>
           </div>
@@ -780,30 +807,6 @@
     switchBattleTab('attack');
   }
 
-  let splashTimeout = null;
-  function showTurnSplash(type, title, desc, icon) {
-    const overlay = document.getElementById('turn-splash-overlay');
-    const card = document.getElementById('turn-splash-card');
-    const iconEl = document.getElementById('turn-splash-icon');
-    const titleEl = document.getElementById('turn-splash-title');
-    const descEl = document.getElementById('turn-splash-desc');
-
-    if (!overlay || !card) return;
-
-    clearTimeout(splashTimeout);
-
-    card.className = `turn-splash-card ${type}`;
-    if (iconEl) iconEl.textContent = icon;
-    if (titleEl) titleEl.textContent = title;
-    if (descEl) descEl.textContent = desc;
-
-    overlay.classList.add('show');
-
-    splashTimeout = setTimeout(() => {
-      overlay.classList.remove('show');
-    }, 1800);
-  }
-
   function updateTurnDisplay(isMyTurn, activePlayerName, isExtraTurn = false) {
     state.battle.isMyTurn = isMyTurn;
     const titleEl = document.getElementById('turn-banner-main');
@@ -816,14 +819,12 @@
         hudTurnBanner.className = 'turn-banner extra-turn';
         if (titleEl) titleEl.textContent = 'TIRO EXTRA';
         if (subEl) subEl.textContent = 'Dispare novamente.';
-        showTurnSplash('extra', 'TIRO EXTRA', 'Dispare novamente.');
         window.tacticalAudio.extraShotSound();
         window.tacticalHaptics.extraTurn();
       } else {
         hudTurnBanner.className = 'turn-banner your-turn';
         if (titleEl) titleEl.textContent = 'SEU TURNO';
         if (subEl) subEl.textContent = 'Toque no radar para disparar.';
-        showTurnSplash('', 'SEU TURNO', 'Disparo autorizado.');
         window.tacticalAudio.turnAlertSound();
         window.tacticalHaptics.yourTurn();
       }
@@ -851,8 +852,6 @@
         attackRadarCard.classList.remove('radar-active');
         attackRadarCard.classList.add('radar-locked');
       }
-
-      showTurnSplash('opponent', 'TURNO INIMIGO', `Aguardando ${activePlayerName}...`);
     }
   }
 
@@ -1862,7 +1861,7 @@
   }
 
   function resetMatchToLobby() {
-    state.roomCode = null;
+    updateActiveRoomCodeDisplay(null);
     state.placement.ships = [];
     state.battle.attackGrid = Array.from({ length: 10 }, () => Array(10).fill(null));
     state.battle.defenseGrid = Array.from({ length: 10 }, () => Array(10).fill(null));
