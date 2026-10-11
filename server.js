@@ -456,7 +456,20 @@ const server = http.createServer(async (req, res) => {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-    res.writeHead(200, { 'Content-Type': contentType });
+    const isNoCacheFile = pathname === '/' || pathname === '/index.html' || pathname === '/sw.js';
+    const headers = {
+      'Content-Type': contentType
+    };
+
+    if (isNoCacheFile) {
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, proxy-revalidate';
+      headers['Pragma'] = 'no-cache';
+      headers['Expires'] = '0';
+    } else {
+      headers['Cache-Control'] = 'public, max-age=60, must-revalidate';
+    }
+
+    res.writeHead(200, headers);
     fs.createReadStream(filePath).pipe(res);
   });
 });
