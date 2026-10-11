@@ -498,6 +498,52 @@ body {
   box-shadow: var(--cyan-glow);
 }
 
+.player-name-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.player-name-row .input-tactical {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-random-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--cyan);
+  padding: 0 14px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 44px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-random-name:hover {
+  background: rgba(0, 240, 255, 0.22);
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+  transform: rotate(15deg);
+}
+
+.btn-random-name:active {
+  transform: scale(0.92) rotate(30deg);
+  background: rgba(0, 240, 255, 0.35);
+}
+
+.btn-random-name .icon-svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--cyan);
+  transition: transform 0.2s;
+}
+
 .btn-primary {
   width: 100%;
   padding: 14px;
@@ -1996,17 +2042,87 @@ body {
   cursor: default;
 }
 
-/* Add Friend Form */
+/* Add Friend Section & Form */
+.add-friend-section {
+  margin-bottom: 14px;
+  width: 100%;
+}
+
+.add-friend-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--cyan);
+  margin-bottom: 6px;
+}
+
+.add-friend-hint {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: none;
+}
+
 .add-friend-form {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  align-items: stretch;
+  width: 100%;
 }
 
+.add-friend-form .input-friend-code,
 .add-friend-form input {
-  flex: 1;
-  font-size: 0.85rem;
-  padding: 10px 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  padding: 11px 14px;
+  min-height: 46px;
+  background: var(--bg-dark);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.add-friend-form .input-friend-code::placeholder,
+.add-friend-form input::placeholder {
+  font-size: 0.84rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+
+.add-friend-form .input-friend-code:focus,
+.add-friend-form input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+}
+
+.add-friend-form .btn-add-friend,
+.add-friend-form .btn-primary {
+  width: auto;
+  min-width: 115px;
+  flex: 0 0 auto;
+  min-height: 46px;
+  padding: 0 16px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Friends List */
@@ -2903,6 +3019,21 @@ button:active,
     font-size: 0.74rem;
     min-height: 38px;
   }
+
+  .add-friend-form .btn-add-friend,
+  .add-friend-form .btn-primary {
+    min-width: 95px;
+    padding: 0 12px;
+    font-size: 0.82rem;
+    min-height: 42px;
+  }
+
+  .add-friend-form .input-friend-code,
+  .add-friend-form input {
+    font-size: 0.88rem;
+    padding: 10px 12px;
+    min-height: 42px;
+  }
 }
 
 /* Telas muito estreitas (iPhone SE 1st gen, 320px-360px) */
@@ -2917,6 +3048,17 @@ button:active,
     min-height: 38px;
     font-size: 1rem;
     padding: 4px 6px;
+  }
+
+  .add-friend-form .btn-add-friend,
+  .add-friend-form .btn-primary {
+    min-width: 78px;
+    padding: 0 8px;
+    font-size: 0.76rem;
+  }
+
+  .add-friend-form .btn-add-friend svg {
+    display: none;
   }
 
   .grid-container {

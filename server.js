@@ -74,6 +74,57 @@ const MIME_TYPES = {
   '.mp3': 'audio/mpeg'
 };
 
+// --- Random Commander Names Generator & Cookies ---
+const COMMANDER_TITLES = ['Cmd.', 'Cap.', 'Alm.', 'Ten.'];
+const COMMANDER_CALLSIGNS = [
+  'Trovão', 'Fênix', 'Kraken', 'Viper', 'Sombra', 'Fantasma',
+  'Titan', 'Polar', 'Orion', 'Netuno', 'Poseidon', 'Tritão',
+  'Vulcão', 'Drake', 'Spectro', 'Aço', 'Nemo', 'Corisco',
+  'Eclipse', 'Solaris', 'Vórtice', 'Taurus', 'Apex', 'Hunter',
+  'Havoc', 'Ghost', 'Storm', 'Blitz', 'Hawk', 'Nexus',
+  'Argos', 'Sirius', 'Atlas', 'Alfa', 'Bravo', 'Delta',
+  'Echo', 'Zero', 'Ranger', 'Striker', 'Fox', 'Tubarão', 'Falcão'
+];
+const COMMANDER_STANDALONE = [
+  'Lobo do Mar', 'Ás dos Mares', 'Tubarão Azul', 'Falcão Negro',
+  'Águia de Aço', 'Netuno Bravo', 'Capitão Nemo', 'Capitão Aço',
+  'Capitão Fênix', 'Capitão Drake', 'Capitão Polar', 'Capitão Fox',
+  'Raio Veloz', 'Sentinela 07', 'Vórtice Azul', 'Lobo Negro',
+  'Lobo Bravo', 'Corsário Alfa', 'Guardião 99'
+];
+
+function generateRandomCommanderName() {
+  if (Math.random() < 0.25) {
+    return COMMANDER_STANDALONE[Math.floor(Math.random() * COMMANDER_STANDALONE.length)];
+  }
+  const title = COMMANDER_TITLES[Math.floor(Math.random() * COMMANDER_TITLES.length)];
+  const callsign = COMMANDER_CALLSIGNS[Math.floor(Math.random() * COMMANDER_CALLSIGNS.length)];
+  if (Math.random() < 0.35) {
+    const num = Math.floor(Math.random() * 90 + 10);
+    const candidate = `${title} ${callsign} ${num}`;
+    if (candidate.length <= 15) return candidate;
+  }
+  return `${title} ${callsign}`;
+}
+
+function parseCookies(req) {
+  const list = {};
+  const cookieHeader = req && req.headers ? req.headers.cookie : null;
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach(cookie => {
+    const parts = cookie.split('=');
+    const name = parts[0] ? parts[0].trim() : null;
+    if (!name) return;
+    const value = parts.slice(1).join('=').trim();
+    try {
+      list[name] = decodeURIComponent(value);
+    } catch {
+      list[name] = value;
+    }
+  });
+  return list;
+}
+
 // --- HTTP Server ---
 const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -155,7 +206,9 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/player/sync' && req.method === 'POST') {
     const body = await readJsonBody(req);
     const persistentId = (body.persistentId || '').trim();
-    const name = (body.name || 'Comandante').trim().substring(0, 15);
+    const cookies = parseCookies(req);
+    const rawName = (body.name || cookies.naval_player_name || '').trim();
+    const name = (rawName && rawName !== 'Comandante' ? rawName : generateRandomCommanderName()).substring(0, 15);
     let code = (body.code || '').trim().toUpperCase();
 
     if (!persistentId) {
@@ -250,7 +303,28 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/friends/add' && req.method === 'POST') {
     const body = await readJsonBody(req);
     const myCode = (body.myCode || '').trim().toUpperCase();
-    const targetCode = (body.targetCode || '').trim().toUpperCase();
+    let targetCode = (body.targetCode || '').trim().toUpperCase();
+
+    // Normaliza se veio URL contendo ?amigo= ou &amigo=
+    try {
+      if (targetCode.includes('AMIGO=')) {
+        const urlMatch = targetCode.match(/[?&]AMIGO=([^&#\s]+)/i);
+        if (urlMatch && urlMatch[1]) {
+          targetCode = decodeURIComponent(urlMatch[1]).trim();
+        }
+      }
+    } catch (_) {}
+
+    // Normaliza se contiver CMD-XXXX no texto ou apenas os 4 caracteres finais
+    const cmdMatch = targetCode.match(/\bCMD-([A-Z0-9]{4,10})\b/i);
+    if (cmdMatch) {
+      targetCode = cmdMatch[0].toUpperCase();
+    } else {
+      const cleanSuffix = targetCode.replace(/[^A-Z0-9]/g, '');
+      if (/^[A-Z0-9]{4}$/.test(cleanSuffix)) {
+        targetCode = `CMD-${cleanSuffix}`;
+      }
+    }
 
     if (!myCode || !targetCode) {
       return sendJson(400, { error: 'Códigos inválidos' });
@@ -368,7 +442,17 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/friends/challenge' && req.method === 'POST') {
     const body = await readJsonBody(req);
     const myCode = (body.myCode || '').trim().toUpperCase();
-    const targetCode = (body.targetCode || '').trim().toUpperCase();
+    let targetCode = (body.targetCode || '').trim().toUpperCase();
+
+    const cmdMatch = targetCode.match(/\bCMD-([A-Z0-9]{4,10})\b/i);
+    if (cmdMatch) {
+      targetCode = cmdMatch[0].toUpperCase();
+    } else {
+      const cleanSuffix = targetCode.replace(/[^A-Z0-9]/g, '');
+      if (/^[A-Z0-9]{4}$/.test(cleanSuffix)) {
+        targetCode = `CMD-${cleanSuffix}`;
+      }
+    }
 
     const myPlayer = playersData[myCode];
     const targetPlayer = playersData[targetCode];
@@ -438,6 +522,15 @@ const server = http.createServer(async (req, res) => {
     return res.end('403 Proibido');
   }
 
+  // Cookie handling for Commander Name
+  const cookies = parseCookies(req);
+  let cookieHeaderToSet = null;
+  const isHtmlRoute = (pathname === '/' || pathname === '/index.html');
+  if (isHtmlRoute && (!cookies.naval_player_name || cookies.naval_player_name.trim() === 'Comandante')) {
+    const assignedName = generateRandomCommanderName();
+    cookieHeaderToSet = `naval_player_name=${encodeURIComponent(assignedName)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  }
+
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
       // Fallback to index.html for SPA if not found
@@ -447,7 +540,11 @@ const server = http.createServer(async (req, res) => {
           res.writeHead(404, { 'Content-Type': 'text/plain' });
           return res.end('404 Not Found');
         }
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        const respHeaders = { 'Content-Type': 'text/html; charset=utf-8' };
+        if (cookieHeaderToSet) {
+          respHeaders['Set-Cookie'] = cookieHeaderToSet;
+        }
+        res.writeHead(200, respHeaders);
         res.end(content);
       });
       return;
@@ -463,6 +560,10 @@ const server = http.createServer(async (req, res) => {
     const headers = {
       'Content-Type': contentType
     };
+
+    if (cookieHeaderToSet && (isHtmlRoute || ext === '.html')) {
+      headers['Set-Cookie'] = cookieHeaderToSet;
+    }
 
     if (isNoCacheFile) {
       headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, proxy-revalidate';
@@ -1283,9 +1384,10 @@ async function handlePlayerReconnect(ws, room, player, payload = {}) {
   }
 }
 
-wss.on('connection', ws => {
+wss.on('connection', (ws, req) => {
   ws.isAlive = true;
   ws.friendCode = null;
+  ws.reqCookies = parseCookies(req);
   ws.on('pong', () => { ws.isAlive = true; });
 
   // Envia lista atualizada de salas abertas imediatamente ao conectar
@@ -1365,7 +1467,7 @@ wss.on('connection', ws => {
       if (type === 'create_room') {
         const roomCode = (payload.roomCode && !rooms.has(payload.roomCode)) ? payload.roomCode : generateRoomCode();
         const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
-        const playerName = (payload.playerName || 'Comandante 1').trim().substring(0, 15);
+        const playerName = (payload.playerName || (ws.reqCookies && ws.reqCookies.naval_player_name) || generateRandomCommanderName()).trim().substring(0, 15);
         const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
         const persistentId = (payload.persistentId || '').trim() || null;
         const isPublic = payload.isPublic !== false; // Padrão pública a menos que venha false
@@ -1451,7 +1553,7 @@ wss.on('connection', ws => {
       if (type === 'create_bot_game') {
         const roomCode = generateRoomCode();
         const playerId = 'p_' + Math.random().toString(36).substring(2, 9);
-        const playerName = (payload.playerName || 'Comandante').trim().substring(0, 15) || 'Comandante';
+        const playerName = (payload.playerName || (ws.reqCookies && ws.reqCookies.naval_player_name) || generateRandomCommanderName()).trim().substring(0, 15);
         const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
         const persistentId = (payload.persistentId || '').trim() || null;
         const difficulty = ['easy', 'medium', 'hard'].includes(payload.difficulty) ? payload.difficulty : 'medium';
@@ -1559,7 +1661,7 @@ wss.on('connection', ws => {
       // 2. ENTRAR EM SALA
       if (type === 'join_room') {
         const roomCode = (payload.roomCode || '').toUpperCase().trim();
-        const playerName = (payload.playerName || 'Comandante 2').trim().substring(0, 15);
+        const playerName = (payload.playerName || (ws.reqCookies && ws.reqCookies.naval_player_name) || generateRandomCommanderName()).trim().substring(0, 15);
         const friendCode = (payload.friendCode || '').trim().toUpperCase() || null;
         const persistentId = (payload.persistentId || '').trim() || null;
         ws.friendCode = friendCode;

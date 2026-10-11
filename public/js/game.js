@@ -6,12 +6,107 @@
 (function () {
   'use strict';
 
+  // --- Cookie & Storage Utilities ---
+  function getCookie(name) {
+    const nameEQ = encodeURIComponent(name) + '=';
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1);
+      if (c.indexOf(nameEQ) === 0) {
+        try {
+          return decodeURIComponent(c.substring(nameEQ.length));
+        } catch {
+          return c.substring(nameEQ.length);
+        }
+      }
+    }
+    return null;
+  }
+
+  function setCookie(name, value, days = 365) {
+    let expires = '';
+    if (days) {
+      const date = new Date();
+      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+      expires = '; expires=' + date.toUTCString();
+    }
+    document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value || '')}${expires}; path=/; SameSite=Lax`;
+  }
+
+  // --- Tactical Random Commander Name Generator ---
+  const COMMANDER_TITLES = ['Cmd.', 'Cap.', 'Alm.', 'Ten.'];
+  const COMMANDER_CALLSIGNS = [
+    'Trovão', 'Fênix', 'Kraken', 'Viper', 'Sombra', 'Fantasma',
+    'Titan', 'Polar', 'Orion', 'Netuno', 'Poseidon', 'Tritão',
+    'Vulcão', 'Drake', 'Spectro', 'Aço', 'Nemo', 'Corisco',
+    'Eclipse', 'Solaris', 'Vórtice', 'Taurus', 'Apex', 'Hunter',
+    'Havoc', 'Ghost', 'Storm', 'Blitz', 'Hawk', 'Nexus',
+    'Argos', 'Sirius', 'Atlas', 'Alfa', 'Bravo', 'Delta',
+    'Echo', 'Zero', 'Ranger', 'Striker', 'Fox', 'Tubarão', 'Falcão'
+  ];
+  const COMMANDER_STANDALONE = [
+    'Lobo do Mar', 'Ás dos Mares', 'Tubarão Azul', 'Falcão Negro',
+    'Águia de Aço', 'Netuno Bravo', 'Capitão Nemo', 'Capitão Aço',
+    'Capitão Fênix', 'Capitão Drake', 'Capitão Polar', 'Capitão Fox',
+    'Raio Veloz', 'Sentinela 07', 'Vórtice Azul', 'Lobo Negro',
+    'Lobo Bravo', 'Corsário Alfa', 'Guardião 99'
+  ];
+
+  function generateRandomCommanderName() {
+    if (Math.random() < 0.25) {
+      return COMMANDER_STANDALONE[Math.floor(Math.random() * COMMANDER_STANDALONE.length)];
+    }
+    const title = COMMANDER_TITLES[Math.floor(Math.random() * COMMANDER_TITLES.length)];
+    const callsign = COMMANDER_CALLSIGNS[Math.floor(Math.random() * COMMANDER_CALLSIGNS.length)];
+    if (Math.random() < 0.35) {
+      const num = Math.floor(Math.random() * 90 + 10);
+      const candidate = `${title} ${callsign} ${num}`;
+      if (candidate.length <= 15) return candidate;
+    }
+    return `${title} ${callsign}`;
+  }
+
+  function getInitialPlayerName() {
+    // 1. Try reading existing cookie
+    const cookieName = getCookie('naval_player_name');
+    if (cookieName && cookieName.trim() && cookieName.trim() !== 'Comandante') {
+      const clean = cookieName.trim().substring(0, 15);
+      localStorage.setItem('naval_player_name', clean);
+      return clean;
+    }
+
+    // 2. Try reading from localStorage if set and not old generic fallback
+    const localName = localStorage.getItem('naval_player_name');
+    if (localName && localName.trim() && localName.trim() !== 'Comandante') {
+      const clean = localName.trim().substring(0, 15);
+      setCookie('naval_player_name', clean, 365);
+      return clean;
+    }
+
+    // 3. Generate random name and save in cookie & localStorage for reuse
+    const freshName = generateRandomCommanderName();
+    setCookie('naval_player_name', freshName, 365);
+    localStorage.setItem('naval_player_name', freshName);
+    return freshName;
+  }
+
+  function saveAndApplyPlayerName(name) {
+    const clean = (name || '').trim().substring(0, 15) || generateRandomCommanderName();
+    state.playerName = clean;
+    const inputEl = document.getElementById('input-player-name');
+    if (inputEl) inputEl.value = clean;
+    setCookie('naval_player_name', clean, 365);
+    localStorage.setItem('naval_player_name', clean);
+    return clean;
+  }
+
   // --- Game State ---
   const state = {
     ws: null,
     roomCode: null,
     playerId: null,
-    playerName: localStorage.getItem('naval_player_name') || 'Comandante',
+    playerName: getInitialPlayerName(),
     opponentName: 'Inimigo',
     opponentFriendCode: null,
     persistentId: localStorage.getItem('naval_player_uuid') || (function() {
@@ -431,7 +526,7 @@
         state.roomCode = msg.roomCode;
         updateActiveRoomCodeDisplay(msg.roomCode);
         state.playerId = msg.playerId;
-        state.playerName = msg.playerName;
+        state.playerName = saveAndApplyPlayerName(msg.playerName);
         state.opponentName = msg.opponentName;
         if (msg.opponentFriendCode) {
           state.opponentFriendCode = msg.opponentFriendCode;
@@ -466,7 +561,7 @@
         state.roomCode = msg.roomCode;
         updateActiveRoomCodeDisplay(msg.roomCode);
         state.playerId = msg.playerId;
-        state.playerName = msg.playerName;
+        state.playerName = saveAndApplyPlayerName(msg.playerName);
         state.opponentName = msg.opponentName;
         if (msg.opponentFriendCode) {
           state.opponentFriendCode = msg.opponentFriendCode;
@@ -574,6 +669,7 @@
 
   // --- LOBBY INTERACTIONS ---
   const inputPlayerName = document.getElementById('input-player-name');
+  const btnRandomName = document.getElementById('btn-random-name');
   const btnCreateRoom = document.getElementById('btn-create-room');
   const btnJoinRoom = document.getElementById('btn-join-room');
   const inputRoomCode = document.getElementById('input-room-code');
@@ -583,8 +679,41 @@
   const badgePublicRoomsCount = document.getElementById('badge-public-rooms-count');
   const btnRefreshRooms = document.getElementById('btn-refresh-rooms');
 
-  if (state.playerName) {
+  if (state.playerName && inputPlayerName) {
     inputPlayerName.value = state.playerName;
+  }
+
+  if (inputPlayerName) {
+    inputPlayerName.addEventListener('input', () => {
+      const val = inputPlayerName.value.trim().substring(0, 15);
+      if (val) {
+        state.playerName = val;
+        setCookie('naval_player_name', val, 365);
+        localStorage.setItem('naval_player_name', val);
+      }
+    });
+
+    inputPlayerName.addEventListener('change', () => {
+      let val = inputPlayerName.value.trim().substring(0, 15);
+      if (!val) {
+        val = generateRandomCommanderName();
+      }
+      saveAndApplyPlayerName(val);
+    });
+  }
+
+  if (btnRandomName) {
+    btnRandomName.addEventListener('click', () => {
+      if (window.tacticalAudio && window.tacticalAudio.click) {
+        window.tacticalAudio.click();
+      }
+      if (window.tacticalHaptics && window.tacticalHaptics.click) {
+        window.tacticalHaptics.click();
+      }
+      const newName = generateRandomCommanderName();
+      saveAndApplyPlayerName(newName);
+      showToast(`Nome gerado: ${newName}`, 2000);
+    });
   }
 
   function setRoomPrivacy(isPublic) {
@@ -618,8 +747,7 @@
     isCreatingRoom = true;
     setTimeout(() => { isCreatingRoom = false; }, 1500);
 
-    state.playerName = inputPlayerName.value.trim() || 'Comandante 1';
-    localStorage.setItem('naval_player_name', state.playerName);
+    state.playerName = saveAndApplyPlayerName(inputPlayerName.value.trim() || state.playerName || generateRandomCommanderName());
     await initWebSocket();
     sendWS('create_room', {
       playerName: state.playerName,
@@ -692,8 +820,7 @@
 
       if (modalBot) modalBot.classList.remove('active');
 
-      state.playerName = inputPlayerName.value.trim() || 'Comandante';
-      localStorage.setItem('naval_player_name', state.playerName);
+      state.playerName = saveAndApplyPlayerName(inputPlayerName.value.trim() || state.playerName || generateRandomCommanderName());
       state.isBotMatch = true;
 
       await initWebSocket();
@@ -729,8 +856,7 @@
     isJoiningRoom = true;
     setTimeout(() => { isJoiningRoom = false; }, 1500);
 
-    state.playerName = inputPlayerName.value.trim() || 'Comandante 2';
-    localStorage.setItem('naval_player_name', state.playerName);
+    state.playerName = saveAndApplyPlayerName(inputPlayerName.value.trim() || state.playerName || generateRandomCommanderName());
     await initWebSocket();
     sendWS('join_room', {
       roomCode: cleanCode,
@@ -1830,10 +1956,44 @@
     }
   }
 
-  async function addFriendByCode(targetCode) {
-    if (!targetCode) return;
-    targetCode = targetCode.trim().toUpperCase();
-    if (!targetCode) return;
+  function extractFriendCode(raw) {
+    if (!raw || typeof raw !== 'string') return '';
+    let val = raw.trim();
+
+    // 1. Extração de URL contendo ?amigo= ou &amigo=
+    try {
+      if (val.includes('amigo=')) {
+        const urlMatch = val.match(/[?&]amigo=([^&#\s]+)/i);
+        if (urlMatch && urlMatch[1]) {
+          val = decodeURIComponent(urlMatch[1]).trim();
+        }
+      }
+    } catch (_) {}
+
+    // 2. Extração de padrão CMD-XXXX em qualquer parte do texto (ex: texto de convite copiado)
+    const cmdMatch = val.match(/\bCMD-([A-Z0-9]{4,10})\b/i);
+    if (cmdMatch) {
+      return cmdMatch[0].toUpperCase();
+    }
+
+    // 3. Remove espaços e caracteres de formatação (ex: "CMD - ABCD")
+    const sanitized = val.toUpperCase().replace(/\s+/g, '');
+
+    // 4. Se o usuário digitou apenas os 4 caracteres finais sem CMD- (ex: "89GG")
+    if (/^[A-Z0-9]{4}$/.test(sanitized)) {
+      return `CMD-${sanitized}`;
+    }
+
+    return sanitized;
+  }
+
+  async function addFriendByCode(rawCode) {
+    if (!rawCode) return;
+    const targetCode = extractFriendCode(rawCode);
+    if (!targetCode) {
+      showToast('Digite um código de amigo válido.');
+      return;
+    }
 
     if (targetCode === state.friendCode) {
       showToast('Você não pode adicionar seu próprio código!');
@@ -1912,7 +2072,7 @@
       if (modalFriends) modalFriends.classList.remove('active');
 
       state.roomCode = data.roomCode;
-      state.playerName = inputPlayerName.value.trim() || 'Comandante 1';
+      state.playerName = saveAndApplyPlayerName(inputPlayerName ? inputPlayerName.value.trim() : state.playerName);
       await initWebSocket();
 
       sendWS('create_room', {
@@ -2034,10 +2194,29 @@
   }
 
   if (btnSubmitAddFriend && inputAddFriendCode) {
+    // Ao colar link ou mensagem de convite, extrai e preenche instantaneamente o código limpo
+    inputAddFriendCode.addEventListener('paste', () => {
+      setTimeout(() => {
+        const extracted = extractFriendCode(inputAddFriendCode.value);
+        if (extracted && extracted.startsWith('CMD-')) {
+          inputAddFriendCode.value = extracted;
+        }
+      }, 20);
+    });
+
+    // Ao perder o foco ou alterar, se for link ou sufixo simples, normaliza
+    inputAddFriendCode.addEventListener('blur', () => {
+      const extracted = extractFriendCode(inputAddFriendCode.value);
+      if (extracted && extracted.startsWith('CMD-')) {
+        inputAddFriendCode.value = extracted;
+      }
+    });
+
     btnSubmitAddFriend.addEventListener('click', () => {
       window.tacticalAudio.click();
       addFriendByCode(inputAddFriendCode.value);
     });
+
     inputAddFriendCode.addEventListener('keyup', (e) => {
       if (e.key === 'Enter') {
         window.tacticalAudio.click();

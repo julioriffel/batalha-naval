@@ -7,7 +7,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node test_game.js",
-    "test:reconnect": "node test_reconnect.js"
+    "test:reconnect": "node test_reconnect.js",
+    "test:cookies": "node test_cookies_name.js"
   },
   "keywords": [
     "battleship",
