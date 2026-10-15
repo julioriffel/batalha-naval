@@ -142,10 +142,14 @@ const server = http.createServer(async (req, res) => {
     );
   }
 
-  // API: Ranking de vitórias dos comandantes
+  // API: Ranking de vitórias dos comandantes (últimos 7 dias)
   if (pathname === '/api/leaderboard') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ leaderboard: getSortedLeaderboard() }));
+    return res.end(JSON.stringify({
+      leaderboard: getSortedLeaderboard(),
+      periodDays: RANKING_RETENTION_DAYS,
+      updatedAt: new Date().toISOString()
+    }));
   }
 
   // API: Dynamic QR Code generation
@@ -612,16 +616,27 @@ const SHIP_SPECS = [
   { id: 'destroyer', name: 'Contratorpedeiro', size: 2, icon: '' }
 ];
 
-// --- Leaderboard / Ranking de Jogadores ---
+// --- Leaderboard / Ranking de Jogadores (Janela de 7 Dias com Expurgo Diário) ---
 const LEADERBOARD_FILE = path.join(__dirname, 'data', 'leaderboard.json');
+const RANKING_RETENTION_DAYS = 7;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const RANKING_RETENTION_MS = RANKING_RETENTION_DAYS * MS_PER_DAY;
+
+let dailyPurgeTimer = null;
+let dailyPurgeInterval = null;
+let lastDailyPurgeDate = '';
 
 function loadLeaderboard() {
   try {
     if (fs.existsSync(LEADERBOARD_FILE)) {
-      return JSON.parse(fs.readFileSync(LEADERBOARD_FILE, 'utf8'));
+      const raw = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
+      const data = JSON.parse(raw);
+      if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+        return data;
+      }
     }
   } catch (e) {
-    console.error('Erro lendo leaderboard:', e);
+    console.error('[Ranking] Erro lendo leaderboard.json:', e);
   }
   return {};
 }
@@ -632,77 +647,240 @@ function saveLeaderboard(data) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (e) {
-    console.error('Erro salvando leaderboard:', e);
+    console.error('[Ranking] Erro salvando leaderboard.json:', e);
   }
 }
 
 let leaderboardData = loadLeaderboard();
 
+/**
+ * Expurga dados com mais de 7 dias do banco de dados (leaderboard.json).
+ * Partidas antigas são descartadas do histórico e comandantes sem partidas
+ * nos últimos 7 dias são removidos integralmente do banco de dados.
+ */
+function purgeOldLeaderboardData(referenceTimeMs = Date.now()) {
+  try {
+    const cutoffTime = referenceTimeMs - RANKING_RETENTION_MS;
+    let purgedPlayersCount = 0;
+    let purgedMatchesCount = 0;
+    let modified = false;
+
+    for (const key of Object.keys(leaderboardData)) {
+      const player = leaderboardData[key];
+      if (!player || typeof player !== 'object') {
+        delete leaderboardData[key];
+        modified = true;
+        continue;
+      }
+
+      // 1. Processa jogadores com lista histórica de partidas
+      if (Array.isArray(player.history)) {
+        const initialCount = player.history.length;
+        player.history = player.history.filter(m => {
+          if (!m || !m.timestamp) return false;
+          const matchTime = new Date(m.timestamp).getTime();
+          return !isNaN(matchTime) && matchTime >= cutoffTime;
+        });
+
+        const removed = initialCount - player.history.length;
+        if (removed > 0) {
+          purgedMatchesCount += removed;
+          modified = true;
+        }
+
+        // Se o comandante não possui nenhuma partida nos últimos 7 dias, é expurgado
+        if (player.history.length === 0) {
+          delete leaderboardData[key];
+          purgedPlayersCount += 1;
+          modified = true;
+          continue;
+        }
+
+        // Recalcula totais consolidados estritamente para a janela dos últimos 7 dias
+        let wins = 0;
+        let losses = 0;
+        let totalShots = 0;
+        let totalHits = 0;
+        let latestTimestamp = '';
+
+        for (const m of player.history) {
+          if (m.won) wins += 1;
+          else losses += 1;
+          totalShots += (Number(m.shots) || 0);
+          totalHits += (Number(m.hits) || 0);
+          if (!latestTimestamp || m.timestamp > latestTimestamp) {
+            latestTimestamp = m.timestamp;
+          }
+        }
+
+        player.wins = wins;
+        player.losses = losses;
+        player.matches = wins + losses;
+        player.totalShots = totalShots;
+        player.totalHits = totalHits;
+        player.winRate = player.matches > 0 ? Math.round((player.wins / player.matches) * 100) : 0;
+        player.accuracy = player.totalShots > 0 ? Math.round((player.totalHits / player.totalShots) * 100) : 0;
+        player.lastPlayed = latestTimestamp || player.lastPlayed;
+      } else {
+        // 2. Registro legado sem histórico: avalia lastPlayed
+        const lastPlayedMs = player.lastPlayed ? new Date(player.lastPlayed).getTime() : 0;
+        if (isNaN(lastPlayedMs) || lastPlayedMs < cutoffTime) {
+          // Mais velho que 7 dias -> expurgo total do banco
+          delete leaderboardData[key];
+          purgedPlayersCount += 1;
+          modified = true;
+        } else {
+          // Dentro dos 7 dias -> sintetiza histórico para acompanhar a janela rolante
+          player.history = [];
+          const matchesCount = (player.matches && player.matches > 0) ? player.matches : (player.wins || 0) + (player.losses || 0);
+          const avgShots = Math.round((player.totalShots || 0) / Math.max(1, matchesCount));
+          const avgHits = Math.round((player.totalHits || 0) / Math.max(1, matchesCount));
+
+          for (let i = 0; i < (player.wins || 0); i++) {
+            player.history.push({
+              timestamp: player.lastPlayed,
+              won: true,
+              shots: avgShots,
+              hits: avgHits
+            });
+          }
+          for (let i = 0; i < (player.losses || 0); i++) {
+            player.history.push({
+              timestamp: player.lastPlayed,
+              won: false,
+              shots: avgShots,
+              hits: avgHits
+            });
+          }
+          modified = true;
+        }
+      }
+    }
+
+    lastDailyPurgeDate = new Date(referenceTimeMs).toDateString();
+
+    if (modified) {
+      saveLeaderboard(leaderboardData);
+    }
+
+    if (purgedPlayersCount > 0 || purgedMatchesCount > 0) {
+      console.log(`[Ranking] Expurgo dos últimos 7 dias: ${purgedPlayersCount} comandante(s) inativo(s) expurgado(s), ${purgedMatchesCount} partida(s) antiga(s) descartada(s).`);
+    }
+
+    return { purgedPlayersCount, purgedMatchesCount };
+  } catch (err) {
+    console.error('[Ranking] Erro durante expurgo de dados de leaderboard:', err);
+    return { purgedPlayersCount: 0, purgedMatchesCount: 0, error: err.message };
+  }
+}
+
+/**
+ * Configura o agendamento de expurgo diário à meia-noite e em ciclos contínuos de 24h
+ */
+function scheduleDailyPurge() {
+  if (dailyPurgeTimer) clearTimeout(dailyPurgeTimer);
+  if (dailyPurgeInterval) clearInterval(dailyPurgeInterval);
+
+  // Executa expurgo imediato na inicialização do servidor
+  purgeOldLeaderboardData();
+
+  const now = new Date();
+  const nextMidnight = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    0, 0, 5, 0
+  );
+  const msUntilMidnight = Math.max(1000, nextMidnight.getTime() - now.getTime());
+
+  console.log(`[Ranking] Expurgo diário ativado: janela de ${RANKING_RETENTION_DAYS} dias, próximo ciclo em ${(msUntilMidnight / 3600000).toFixed(2)}h.`);
+
+  dailyPurgeTimer = setTimeout(() => {
+    console.log('[Ranking] Executando expurgo diário programado (meia-noite)...');
+    purgeOldLeaderboardData();
+
+    dailyPurgeInterval = setInterval(() => {
+      console.log('[Ranking] Executando expurgo diário programado (ciclo diário de 24h)...');
+      purgeOldLeaderboardData();
+    }, MS_PER_DAY);
+  }, msUntilMidnight);
+}
+
 function getSortedLeaderboard(limit = 25) {
+  // Verificação de segurança diária caso haja transição de dia entre consultas
+  const todayStr = new Date().toDateString();
+  if (lastDailyPurgeDate && todayStr !== lastDailyPurgeDate) {
+    purgeOldLeaderboardData();
+  }
+
   return Object.values(leaderboardData)
+    .filter(p => p && typeof p === 'object' && p.matches > 0)
     .sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
       if (b.winRate !== a.winRate) return b.winRate - a.winRate;
       if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
       return b.matches - a.matches;
     })
-    .slice(0, limit);
+    .slice(0, limit)
+    .map(p => ({
+      name: p.name,
+      wins: p.wins,
+      losses: p.losses,
+      matches: p.matches,
+      winRate: p.winRate,
+      accuracy: p.accuracy,
+      totalShots: p.totalShots,
+      totalHits: p.totalHits,
+      lastPlayed: p.lastPlayed
+    }));
 }
 
-function recordMatchResult(winnerName, loserName, winnerShots, winnerHits, loserShots, loserHits) {
-  const now = new Date().toISOString();
+function recordMatchResult(winnerName, loserName, winnerShots, winnerHits, loserShots, loserHits, matchTimestamp = null) {
+  const now = matchTimestamp || new Date().toISOString();
 
-  // Atualiza Vencedor
-  const wKey = (winnerName || 'Comandante').trim().toLowerCase();
-  if (!leaderboardData[wKey]) {
-    leaderboardData[wKey] = {
-      name: (winnerName || 'Comandante').trim(),
-      wins: 0,
-      losses: 0,
-      matches: 0,
-      winRate: 0,
-      accuracy: 0,
-      totalShots: 0,
-      totalHits: 0,
-      lastPlayed: now
-    };
+  function updatePlayer(rawName, isWinner, shots, hits) {
+    const cleanName = (rawName || (isWinner ? 'Comandante' : 'Inimigo')).trim();
+    const key = cleanName.toLowerCase();
+
+    if (!leaderboardData[key]) {
+      leaderboardData[key] = {
+        name: cleanName,
+        wins: 0,
+        losses: 0,
+        matches: 0,
+        winRate: 0,
+        accuracy: 0,
+        totalShots: 0,
+        totalHits: 0,
+        lastPlayed: now,
+        history: []
+      };
+    }
+
+    const player = leaderboardData[key];
+    player.name = cleanName;
+    if (!Array.isArray(player.history)) {
+      player.history = [];
+    }
+
+    player.history.push({
+      timestamp: now,
+      won: Boolean(isWinner),
+      shots: Number(shots) || 0,
+      hits: Number(hits) || 0
+    });
   }
-  const w = leaderboardData[wKey];
-  w.name = (winnerName || 'Comandante').trim();
-  w.wins += 1;
-  w.matches += 1;
-  w.totalShots += (winnerShots || 0);
-  w.totalHits += (winnerHits || 0);
-  w.winRate = Math.round((w.wins / w.matches) * 100);
-  w.accuracy = w.totalShots > 0 ? Math.round((w.totalHits / w.totalShots) * 100) : 0;
-  w.lastPlayed = now;
 
-  // Atualiza Perdedor
-  const lKey = (loserName || 'Inimigo').trim().toLowerCase();
-  if (!leaderboardData[lKey]) {
-    leaderboardData[lKey] = {
-      name: (loserName || 'Inimigo').trim(),
-      wins: 0,
-      losses: 0,
-      matches: 0,
-      winRate: 0,
-      accuracy: 0,
-      totalShots: 0,
-      totalHits: 0,
-      lastPlayed: now
-    };
-  }
-  const l = leaderboardData[lKey];
-  l.name = (loserName || 'Inimigo').trim();
-  l.losses += 1;
-  l.matches += 1;
-  l.totalShots += (loserShots || 0);
-  l.totalHits += (loserHits || 0);
-  l.winRate = Math.round((l.wins / l.matches) * 100);
-  l.accuracy = l.totalShots > 0 ? Math.round((l.totalHits / l.totalShots) * 100) : 0;
-  l.lastPlayed = now;
+  updatePlayer(winnerName, true, winnerShots, winnerHits);
+  updatePlayer(loserName, false, loserShots, loserHits);
 
+  // Executa expurgo imediato para assegurar que apenas dados dos últimos 7 dias fiquem salvos no DB
+  const matchMs = new Date(now).getTime();
+  purgeOldLeaderboardData(!isNaN(matchMs) ? matchMs : Date.now());
+
+  // Salva no banco de dados
   saveLeaderboard(leaderboardData);
+
   return getSortedLeaderboard();
 }
 
@@ -1445,10 +1623,11 @@ wss.on('connection', (ws, req) => {
         attachWsCommander(ws, payload.friendCode, payload.persistentId);
       }
 
-      // 0. CONSULTAR RANKING
+      // 0. CONSULTAR RANKING (últimos 7 dias)
       if (type === 'get_leaderboard') {
         return send(ws, 'leaderboard_data', {
-          leaderboard: getSortedLeaderboard()
+          leaderboard: getSortedLeaderboard(),
+          periodDays: RANKING_RETENTION_DAYS
         });
       }
 
@@ -2260,10 +2439,18 @@ const pingInterval = setInterval(() => {
 
 wss.on('close', () => clearInterval(pingInterval));
 
+server.on('close', () => {
+  if (dailyPurgeTimer) clearTimeout(dailyPurgeTimer);
+  if (dailyPurgeInterval) clearInterval(dailyPurgeInterval);
+});
+
 // --- Start Server ---
 async function start() {
   const chosenPort = await getAvailablePort(PORT);
   PORT = chosenPort;
+
+  // Inicializa o agendamento de expurgo diário do ranking (janela de 7 dias)
+  scheduleDailyPurge();
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n======================================================`);
@@ -2277,6 +2464,24 @@ async function start() {
   });
 }
 
-start();
+if (require.main === module) {
+  start();
+}
+
+module.exports = {
+  server,
+  start,
+  loadLeaderboard,
+  saveLeaderboard,
+  purgeOldLeaderboardData,
+  recordMatchResult,
+  getSortedLeaderboard,
+  scheduleDailyPurge,
+  RANKING_RETENTION_DAYS,
+  RANKING_RETENTION_MS,
+  LEADERBOARD_FILE,
+  getLeaderboardData: () => leaderboardData,
+  setLeaderboardData: (data) => { leaderboardData = data; }
+};
 
 

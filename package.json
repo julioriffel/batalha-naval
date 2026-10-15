@@ -8,7 +8,8 @@
     "dev": "node --watch server.js",
     "test": "node test_game.js",
     "test:reconnect": "node test_reconnect.js",
-    "test:cookies": "node test_cookies_name.js"
+    "test:cookies": "node test_cookies_name.js",
+    "test:ranking": "node test_ranking_retention.js"
   },
   "keywords": [
     "battleship",

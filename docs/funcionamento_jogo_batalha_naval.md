@@ -124,13 +124,16 @@ O projeto utiliza tecnologias web nativas sem downloads de mídias pesadas:
 
 ---
 
-## 🏆 6. Sistema de Classificação e Estatísticas
+## 🏆 6. Sistema de Classificação e Estatísticas (Janela de 7 Dias)
 
-As estatísticas são salvas em `data/leaderboard.json` e avaliam:
-- **Vitórias e Derrotas Totais.**
-- **Taxa de Vitória (% Win Rate):** Percentual de jogos vencidos sobre o total de partidas.
-- **Precisão de Disparos (% Accuracy):**
-  $$\text{Precisão} = \left(\frac{\text{Total de Tiros Certeiros}}{\text{Total de Tiros Disparados}}\right) \times 100$$
+As estatísticas são salvas no banco de dados (`data/leaderboard.json`) com uma política estrita de **retenção rolante de 7 dias** e **expurgo diário automatizado**:
+- **Janela Rolante de 7 Dias:** Somente partidas disputadas nos últimos 7 dias contam para o ranking de comandantes.
+- **Expurgo Diário Automatizado:** Rotina programada executada à meia-noite (e a cada 24 horas, além de checagem na inicialização) descarta partidas com mais de 7 dias e remove comandantes inativos sem partidas recentes.
+- **Métricas Avaliadas:**
+  - **Vitórias e Derrotas no Período (7 dias).**
+  - **Taxa de Vitória (% Win Rate):** Percentual de jogos vencidos sobre o total de partidas nos últimos 7 dias.
+  - **Precisão de Disparos (% Accuracy):**
+    $$\text{Precisão} = \left(\frac{\text{Total de Tiros Certeiros}}{\text{Total de Tiros Disparados}}\right) \times 100$$
 
 A tabela de líderes exibe condecorações militares para os melhores colocados (🥇, 🥈, 🥉) e destaca a linha do jogador logado.
 

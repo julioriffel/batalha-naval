@@ -1583,7 +1583,7 @@
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 22px;">
-            Nenhuma batalha registrada ainda. Vença a primeira para liderar o quadro de honra!
+            Nenhuma batalha registrada nos últimos 7 dias. Vença a primeira para liderar o quadro de honra!
           </td>
         </tr>
       `;
